@@ -134,36 +134,52 @@ async function generateSampleDocument() {
 }
 ```
 
-## Расширенные возможности
+## Пример шаблонов
 
-### Шаблоны с дополнительными полями
+### Пример генерации уведомлений
 
-```typescript
-const documentTemplates = ref([
+```json
+[
   {
-    id: "notification_template",
-    name: "Уведомление",
-    description: "Стандартное уведомление",
-    additional_fields: [
+    "id": "notification_and_accompanying_template",
+    "name": "Уведомление и сопроводительная документация",
+    "description": "Стандартный шаблон уведомления и сопроводительной документации",
+    "api_endpoints": [
       {
-        id: "recipient_name",
-        name: "ФИО получателя",
-        type: "string",
-        description: "Укажите ФИО получателя уведомления",
-        required: true,
-        defaultValue: null,
-      },
-      {
-        id: "notification_date",
-        name: "Дата уведомления",
-        type: "date",
-        description: "Укажите дату уведомления",
-        required: true,
-        defaultValue: null,
-      },
+        "id": "staff_info",
+        "url": "http://localhost:9007/api/v1/staff/summary?position=руководитель отдела&name_by_select={{ document.solution.decision_description }}",
+        "method": "GET"
+      }
     ],
-  },
-]);
+    "additional_fields": [
+      {
+        "id": "petition_date",
+        "name": "Дата обращения",
+        "type": "date",
+        "description": "Дата составления обращения",
+        "required": true,
+        "defaultValue": null,
+        "conditions": [
+          {
+            "logic": "AND",
+            "conditions": [
+              {
+                "field": "requests.sender",
+                "operator": "!=",
+                "value": "напрямую"
+              },
+              {
+                "field": "requests.sender",
+                "operator": "!regex",
+                "value": "^[А-ЯЁ][а-яё]+\\s+[А-ЯЁ]\\.[А-ЯЁ]\\."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+] 
 ```
 
 ### Настройка размера диалога
