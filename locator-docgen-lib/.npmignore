@@ -1,0 +1,23 @@
+# Игнорировать исходные файлы при публикации
+src/
+example/
+node_modules/
+.dockerignore
+.gitignore
+Dockerfile
+nginx.conf
+reinstall-revogrid.bash
+*.tgz
+tsconfig.json
+tsconfig.app.json
+tsconfig.node.json
+vite.config.ts
+components.json
+tailwind.config.js
+
+# Только для разработки
+.vscode/
+.idea/
+
+# Только распространять dist/
+!dist/ 

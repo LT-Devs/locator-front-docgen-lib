@@ -1,0 +1,60 @@
+{
+  "name": "locator-docgen-lib",
+  "private": false,
+  "version": "1.0.9",
+  "type": "module",
+  "main": "dist/locator-docgen-lib.umd.js",
+  "module": "dist/locator-docgen-lib.es.js",
+  "types": "@types/locator-docgen-lib.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": ["@types/locator-docgen-lib.d.ts"]
+    }
+  },
+  "files": [
+    "dist",
+    "@types"
+  ],
+  "description": "Locator Docgen Library",
+  "author": "BadKiko",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build && cp @types/locator-docgen-lib.d.ts dist/index.d.ts",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@vueuse/core": "^12.8.2",
+    "axios": "^1.7.9",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^16.4.7",
+    "embla-carousel-vue": "^8.6.0",
+    "handsontable": "^15.0.1",
+    "lucide-vue-next": "^0.469.0",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.2.5",
+    "reka-ui": "^2.2.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7",
+    "vee-validate": "^4.15.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-sonner": "^1.3.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.15",
+    "@types/node": "^22.10.5",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/tsconfig": "^0.7.0",
+    "autoprefixer": "^10.4.20",
+    "sass-embedded": "^1.83.4",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.5",
+    "vite-plugin-dts": "^4.5.3",
+    "vue-tsc": "^2.2.0"
+  }
+}

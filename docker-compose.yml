@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+
+  petitions_backend:
+    image: backend_petition:latest
+    ports:
+      - "8001:8000"
+    environment:
+      - FILE_BACKEND_URL=http://10.17.1.216:8002
+      - DJANGO_SECRET_KEY=django-insecure-ud2*4h!ncf9pa1=w)9=v7s*$9=2ne-avvv0+a0bp4rs#tqdci9
+      - DB_NAME=release
+      - DB_USER=superb
+      - DB_PASSWORD=Super*77
+      - DB_HOST=10.17.1.216
+      - DB_PORT=5432
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+    volumes:
+      - ./static:/app/static
+    restart: always
+    user: "0:0"
+
+  petitions_frontend:
+    image: frontend_petition:latest
+    ports:
+      - "4173:4173"
+    environment:
+      - VITE_BACKEND_URL=http://10.17.1.216:8001
+      - VITE_FILE_BACKEND_URL=http://10.17.1.216:8002
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    restart: always

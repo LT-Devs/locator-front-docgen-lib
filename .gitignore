@@ -1,0 +1,4 @@
+petitions_release/backend_petition.tar
+petitions_release/frontend_petition.tar
+.vscode/
+node_modules/.vite/deps/

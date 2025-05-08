@@ -1,0 +1,41 @@
+[
+  {
+    "id": "notification_template",
+    "name": "Уведомление и сопроводительная документация",
+    "description": "Стандартный шаблон уведомления и сопроводительной документации",
+    "api_endpoints": [
+      {
+        "id": "staff_info",
+        "url": "{config.staffUrl}/staff/summary?position=руководитель отдела&name_by_select={{ document.metadata.decision_description }}",
+        "method": "GET"
+      }
+    ],
+    "additional_fields": [
+      {
+        "id": "document_date",
+        "name": "Дата документа",
+        "type": "date",
+        "description": "Дата составления документа",
+        "required": true,
+        "defaultValue": null,
+        "conditions": [
+          {
+            "logic": "AND",
+            "conditions": [
+              {
+                "field": "metadata.sender",
+                "operator": "!=",
+                "value": "напрямую"
+              },
+              {
+                "field": "metadata.sender",
+                "operator": "!regex",
+                "value": "^[А-ЯЁ][а-яё]+\\s+[А-ЯЁ]\\.[А-ЯЁ]\\."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+] 
