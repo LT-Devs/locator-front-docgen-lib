@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://github.com/LT-Devs/locator-front-docgen-lib/blob/main/banner.svg?raw=true" alt="Locator DocGen" height="150" />
+    <img src="https://github.com/LT-Devs/locator-front-docgen-lib/blob/master/banner.svg?raw=true" alt="Locator DocGen" height="150" />
 </p>
 
 <h3 align="center">Locator Document Generation Library</h3>
