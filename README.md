@@ -1,373 +1,244 @@
 <p align="center">
     <img src="https://github.com/LT-Devs/locator-front-docgen-lib/blob/master/banner.svg?raw=true" alt="Locator DocGen" height="150" />
 </p>
+<h3 align="center">Locator модуль для обращений граждан</h3>
 
-<h3 align="center">Locator Document Generation Library</h3>
+## Обзор
 
-Библиотека для генерации документов из шаблонов для Vue 3 приложений.
+Библиотека для генерации документов в системе Locator. Позволяет создавать и настраивать шаблоны документов с динамическими полями и интеграцией с API.
 
-## Описание
+## Структура шаблона документа
 
-`locator-docgen-lib` - библиотека, которая предоставляет компоненты и функции для генерации документов на основе шаблонов в формате DOCX.
-
-## Установка
-
-```bash
-npm install locator-docgen-lib
-```
-
-или
-
-```bash
-yarn add locator-docgen-lib
-```
-
-## Быстрый старт
-
-Минимальная настройка для быстрого запуска:
-
-В main.ts вставьте:
+Шаблоны документов (`DocumentTemplate`) используются для генерации документов и имеют следующую структуру:
 
 ```typescript
-import { createApp } from "vue";
-import App from "./App.vue";
-import { setConfig, DocumentDialog, install } from "locator-docgen-lib";
-import "locator-docgen-lib/dist/locator-docgen-lib.css";
-
-const app = createApp(App);
-
-// Базовая настройка, укажите url до service files handler, export endpoint
-app.use(install, {
-  fileHandlerBackendUrl: "https://files.example.com",
-  generateDocumentPath: "/generate-document/",
-});
-
-app.mount("#app");
-```
-
-Использование компонента DocumentDialog:
-
-```vue
-<template>
-  <div>
-    <button @click="showDialog = true">Генерировать документ</button>
-
-    <DocumentDialog
-      class="w-1/2"
-      v-model:isOpen="showDialog"
-      :document="documentData"
-      :templates="documentTemplates"
-      @success="handleSuccess"
-      @error="handleError"
-    />
-  </div>
-</template>
-
-<script setup>
-import { ref } from "vue";
-import { DocumentDialog } from "locator-docgen-lib";
-
-const showDialog = ref(false);
-const documentData = ref({
-  ref_id: "DOC-2023-001",
-  // Любые другие данные документа
-});
-
-// Пример шаблонов документов
-const documentTemplates = ref([
-  {
-    id: "notification_template",
-    name: "Уведомление",
-    description: "Стандартное уведомление",
-    additional_fields: [], // Пустой массив для примера без доп. полей
-  },
-]);
-
-function handleSuccess(message) {
-  console.log(message);
-}
-
-function handleError(message) {
-  console.error("Ошибка:", message);
-}
-</script>
-```
-
-## Базовое использование
-
-### Настройка через плагин или вручную
-
-```typescript
-// Вариант 1: Использование плагина
-app.use(install, {
-  fileHandlerBackendUrl: "https://files.example.com",
-  generateDocumentPath: "/generate-document/",
-});
-
-// Вариант 2: Ручная настройка
-setConfig({
-  fileHandlerBackendUrl: "https://files.example.com",
-  generateDocumentPath: "/generate-document/",
-});
-app.component("DocumentDialog", DocumentDialog);
-```
-
-### Использование только API
-
-```typescript
-import { documentApi } from "locator-docgen-lib";
-
-// Создание экземпляра API с обработчиками
-const { generateDocument } = documentApi({
-  onSuccess: (message) => console.log(message),
-  onError: (message) => console.error(message),
-});
-
-// Генерация документа
-async function generateSampleDocument() {
-  const data = {
-    ref_id: "DOC-2023-001",
-    // Другие данные документа
-  };
-
-  await generateDocument(data, "notification_template");
+interface DocumentTemplate {
+  id: string; // Уникальный идентификатор шаблона
+  name: string; // Название шаблона
+  description: string; // Описание шаблона
+  api_endpoints?: ApiEndpoint[]; // Опциональные API эндпоинты для получения дополнительных данных
+  additional_fields: AdditionalField[]; // Дополнительные поля для ввода пользователем
 }
 ```
 
-## Пример шаблонов
+### Дополнительные поля (AdditionalField)
 
-### Пример генерации уведомлений
+Дополнительные поля позволяют пользователю вводить данные, которые будут использованы при генерации документа:
+
+```typescript
+interface AdditionalField {
+  id: string; // Уникальный идентификатор поля
+  name: string; // Название поля
+  type: "string" | "number" | "date" | "boolean"; // Тип данных
+  description: string; // Описание поля
+  required: boolean; // Является ли поле обязательным
+  defaultValue: string | number | boolean | null; // Значение по умолчанию
+  conditions?: (FieldCondition | ConditionGroup)[]; // Условия отображения поля
+}
+```
+
+### Типы данных полей
+
+- `string` - текстовое поле
+- `number` - числовое поле
+- `date` - поле для ввода даты (в формате YYYY-MM-DD)
+- `boolean` - логическое поле (чекбокс)
+
+### Условия отображения полей (Conditions)
+
+Условия определяют, когда поле должно отображаться. Поддерживаются как простые условия, так и группы условий с логическими операторами.
+
+#### Простое условие (FieldCondition)
+
+```typescript
+interface FieldCondition {
+  field: string; // Путь к полю в объекте документа
+  operator: string; // Оператор сравнения
+  value: string | number | boolean | null; // Значение для сравнения
+}
+```
+
+#### Операторы сравнения
+
+- `==` - равно
+- `!=` - не равно
+- `>` - больше
+- `<` - меньше
+- `>=` - больше или равно
+- `<=` - меньше или равно
+- `includes` - массив содержит значение
+- `!includes` - массив не содержит значение
+- `regex` - соответствует регулярному выражению
+- `!regex` - не соответствует регулярному выражению
+
+#### Группировка условий (ConditionGroup)
+
+```typescript
+interface ConditionGroup {
+  logic: "AND" | "OR"; // Логический оператор для группы
+  conditions: (FieldCondition | ConditionGroup)[]; // Массив условий или групп условий
+}
+```
+
+### Примеры условий
+
+1. Простое условие (показать поле, если тип документа - "Заявление"):
 
 ```json
-[
-  {
-    "id": "notification_and_accompanying_template",
-    "name": "Уведомление и сопроводительная документация",
-    "description": "Стандартный шаблон уведомления и сопроводительной документации",
-    "api_endpoints": [
-      {
-        "id": "staff_info",
-        "url": "http://localhost:9007/api/v1/staff/summary?position=руководитель отдела&name_by_select={{ document.solution.decision_description }}",
-        "method": "GET"
-      }
-    ],
-    "additional_fields": [
-      {
-        "id": "petition_date",
-        "name": "Дата обращения",
-        "type": "date",
-        "description": "Дата составления обращения",
-        "required": true,
-        "defaultValue": null,
-        "conditions": [
-          {
-            "logic": "AND",
-            "conditions": [
-              {
-                "field": "requests.sender",
-                "operator": "!=",
-                "value": "напрямую"
-              },
-              {
-                "field": "requests.sender",
-                "operator": "!regex",
-                "value": "^[А-ЯЁ][а-яё]+\\s+[А-ЯЁ]\\.[А-ЯЁ]\\."
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
-] 
+{
+  "field": "type",
+  "operator": "==",
+  "value": "Заявление"
+}
 ```
 
-### Настройка размера диалога
+2. Группа условий с логикой AND:
 
-По умолчанию диалог занимает 4/6 ширины экрана. Для изменения ширины используйте CSS-класс:
-
-```vue
-<DocumentDialog
-  class="w-1/2" <!-- Ширина 50% -->
-  v-model:isOpen="isDocumentDialogOpen"
-  :document="selectedDocument"
-  :templates="documentTemplates"
-/>
+```json
+{
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "type",
+      "operator": "==",
+      "value": "Заявление"
+    },
+    {
+      "field": "status",
+      "operator": "!=",
+      "value": "Закрыто"
+    }
+  ]
+}
 ```
 
-## Интеграция с UI-библиотеками
+3. Вложенные группы условий:
 
-### Использование с Shadcn/Vue
+```json
+{
+  "logic": "OR",
+  "conditions": [
+    {
+      "logic": "AND",
+      "conditions": [
+        {
+          "field": "type",
+          "operator": "==",
+          "value": "Заявление"
+        },
+        {
+          "field": "priority",
+          "operator": ">",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "field": "status",
+      "operator": "==",
+      "value": "Срочно"
+    }
+  ]
+}
+```
 
-Библиотека поддерживает интеграцию с компонентами Shadcn/Vue для обеспечения единого стиля приложения.
+## API Интеграция
+
+Шаблоны документов могут включать интеграцию с API для получения дополнительных данных:
 
 ```typescript
-// main.ts
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-// Импортируем компоненты Dialog для анимации и затемнения
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-
-// При использовании библиотеки передайте ваши UI-компоненты
-app.use(install, {
-  fileHandlerBackendUrl: "https://files.example.com",
-  generateDocumentPath: "/generate-document/",
-  uiComponents: {
-    Card,
-    CardContent,
-    CardHeader,
-    CardFooter,
-    CardTitle,
-    CardDescription,
-    Button,
-    Input,
-    Label,
-    Checkbox,
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogFooter,
-    DialogTitle,
-    DialogDescription,
-  },
-});
-```
-
-## API и типы
-
-### Компоненты
-
-#### DocumentDialog
-
-Компонент диалога для генерации документа.
-
-Пропсы:
-
-- `isOpen`: boolean - Управляет отображением диалога
-- `document`: DocumentData - Данные документа
-- `templates`: DocumentTemplate[] - Шаблоны документов
-- `class`: string - CSS класс для настройки размера и стиля диалога
-
-События:
-
-- `update:isOpen` - Изменение состояния открытия
-- `success` - Успешная генерация документа
-- `error` - Ошибка при генерации
-
-### Функции
-
-#### setConfig(config: Partial<DocgenConfig>)
-
-Устанавливает конфигурацию библиотеки.
-
-#### getConfig(): DocgenConfig
-
-Возвращает текущую конфигурацию.
-
-#### documentApi(options?: DocumentApiOptions)
-
-Создает API для работы с документами.
-
-Возвращает объект с методом:
-
-- `generateDocument(data: EnhancedDocumentData, templateName: string): Promise<boolean>`
-
-### Типы
-
-```typescript
-// Базовые данные документа
-interface DocumentData {
-  ref_id?: string;
-  [key: string]: any;
-}
-
-// Расширенные данные документа
-interface EnhancedDocumentData extends DocumentData {
-  additional_fields?: Record<string, any>;
-  api_data?: Record<string, any>;
-}
-
-// Шаблон документа
-interface DocumentTemplate {
-  id: string;
-  name: string;
-  description: string;
-  api_endpoints?: ApiEndpoint[];
-  additional_fields: AdditionalField[];
-}
-
-// Дополнительное поле
-interface AdditionalField {
-  id: string;
-  name: string;
-  type: "string" | "number" | "date" | "boolean";
-  description: string;
-  required: boolean;
-  defaultValue: string | number | boolean | null;
-  conditions?: (FieldCondition | ConditionGroup)[];
+interface ApiEndpoint {
+  id: string; // Уникальный идентификатор эндпоинта (используется для доступа к данным)
+  url: string; // URL эндпоинта (поддерживает шаблонные переменные)
+  method: "GET" | "POST" | "PUT" | "DELETE"; // HTTP метод
+  params?: Record<string, any>; // Параметры запроса (опционально)
+  body?: Record<string, any>; // Тело запроса (опционально)
+  headers?: Record<string, string>; // Заголовки запроса (опционально)
 }
 ```
 
-## Конфигурация
+### Шаблонные переменные в URL и параметрах
 
-Библиотека использует следующие настройки:
+В URL и параметрах можно использовать шаблонные переменные в формате `{{path.to.value}}`. Эти переменные будут заменены соответствующими значениями из документа:
 
-```typescript
-interface DocgenConfig {
-  // API настройки
-  fileHandlerBackendUrl: string; // URL бэкенда для генерации файлов
-  generateDocumentPath: string; // Путь к эндпоинту генерации документов
+- `{{document.ref_id}}` - ID документа
+- `{{document.type}}` - тип документа
+- Любые другие поля из объекта документа
 
-  // UI настройки (опционально)
-  uiComponents?: {
-    Card?: Component;
-    CardContent?: Component;
-    CardHeader?: Component;
-    CardFooter?: Component;
-    CardTitle?: Component;
-    CardDescription?: Component;
-    Button?: Component;
-    Input?: Component;
-    Label?: Component;
-    Checkbox?: Component;
-    Dialog?: Component;
-    DialogContent?: Component;
-    DialogHeader?: Component;
-    DialogFooter?: Component;
-    DialogTitle?: Component;
-    DialogDescription?: Component;
-  };
+### Доступ к базовым URL из конфигурации
+
+Вы можете использовать базовые URL из конфигурации приложения:
+
+- `{config.backendUrl}/api/endpoint` - основной бэкенд URL
+- `{config.staffUrl}/api/endpoint` - URL для API персонала
+- `{config.inquiryUrl}/api/endpoint` - URL для API обращений
+
+## Пример полного шаблона документа
+
+```json
+{
+  "id": "petition_response",
+  "name": "Ответ на обращение",
+  "description": "Генерирует документ с ответом на обращение гражданина",
+  "api_endpoints": [
+    {
+      "id": "petitionData",
+      "url": "{config.inquiryUrl}/api/petitions/{{document.ref_id}}",
+      "method": "GET"
+    },
+    {
+      "id": "userData",
+      "url": "{config.staffUrl}/api/users/{{document.author_id}}",
+      "method": "GET"
+    }
+  ],
+  "additional_fields": [
+    {
+      "id": "response_type",
+      "name": "Тип ответа",
+      "type": "string",
+      "description": "Выберите тип ответа на обращение",
+      "required": true,
+      "defaultValue": "Стандартный"
+    },
+    {
+      "id": "response_date",
+      "name": "Дата ответа",
+      "type": "date",
+      "description": "Укажите дату ответа",
+      "required": true,
+      "defaultValue": null
+    },
+    {
+      "id": "include_attachments",
+      "name": "Включить приложения",
+      "type": "boolean",
+      "description": "Включить список приложений в документ",
+      "required": false,
+      "defaultValue": true,
+      "conditions": [
+        {
+          "field": "has_attachments",
+          "operator": "==",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "rejection_reason",
+      "name": "Причина отказа",
+      "type": "string",
+      "description": "Укажите причину отказа по обращению",
+      "required": true,
+      "defaultValue": null,
+      "conditions": [
+        {
+          "field": "response_type",
+          "operator": "==",
+          "value": "Отказ"
+        }
+      ]
+    }
+  ]
 }
-```
-
-## Разработка и контрибьюция
-
-Для локальной разработки:
-
-```bash
-# Установка зависимостей
-npm install
-
-# Запуск дев-сервера
-npm run dev
-
-# Сборка библиотеки
-npm run build
 ```
