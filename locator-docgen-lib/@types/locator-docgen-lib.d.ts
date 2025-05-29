@@ -21,6 +21,7 @@ export interface EnhancedDocumentData extends DocumentData {
 }
 
 export interface DocumentApiOptions {
+    filename: string | null;
     onSuccess?: (message: string) => void;
     onError?: (message: string) => void;
 }
