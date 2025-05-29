@@ -14,6 +14,7 @@ export interface EnhancedDocumentData extends DocumentData {
 }
 
 export interface DocumentApiOptions {
+    filename: string | null;
     onSuccess?: (message: string) => void;
     onError?: (message: string) => void;
 }
@@ -41,7 +42,12 @@ function documentApiFunction(options?: DocumentApiOptions) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Document_${data.ref_id ?? 'new'}_${templateName}.docx`;
+            if (options?.filename == null) {
+                a.download = `Document_${data.ref_id ?? 'new'}_${templateName}.docx`;
+            }
+            else {
+                a.download = `${options.filename}.docx`;
+            }
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
