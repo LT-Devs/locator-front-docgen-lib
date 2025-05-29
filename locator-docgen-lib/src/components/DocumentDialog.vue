@@ -63,6 +63,7 @@ export interface DocumentTemplate {
 }
 
 export interface DocumentDialogOptions {
+  filename: string | undefined | null
   onSuccess?: (message: string) => void;
   onError?: (message: string) => void;
 }
@@ -82,6 +83,7 @@ const props = defineProps<{
 }>();
 
 const { generateDocument } = documentApi({
+  filename: props.options?.filename,
   onSuccess: (message) => emit('success', message),
   onError: (message) => emit('error', message)
 });

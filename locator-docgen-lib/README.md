@@ -115,6 +115,7 @@ import { documentApi } from "locator-docgen-lib";
 
 // Создание экземпляра API с обработчиками
 const { generateDocument } = documentApi({
+  filename: "",
   onSuccess: (message) => console.log(message),
   onError: (message) => console.error(message),
 });
