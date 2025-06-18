@@ -120,17 +120,17 @@ function getValueByPath(obj: any, path: string): any {
 // Проверка условия для отображения поля
 function checkCondition(condition: FieldCondition | undefined, document: DocumentData | null): boolean {
   if (!condition || !document) return true;
-  
+
   const fieldValue = getValueByPath(document, condition.field);
   const conditionValue = condition.value;
-  
+
   // Если значение условия null, особая обработка
   if (conditionValue === null) {
     return fieldValue === null || fieldValue === undefined;
   }
-  
+
   let result = false;
-  
+
   switch (condition.operator) {
     case "==": result = fieldValue === conditionValue; break;
     case "!=": result = fieldValue !== conditionValue; break;
@@ -140,7 +140,7 @@ function checkCondition(condition: FieldCondition | undefined, document: Documen
     case "<=": result = typeof fieldValue === 'number' && typeof conditionValue === 'number' ? fieldValue <= conditionValue : false; break;
     case "includes": result = Array.isArray(fieldValue) && conditionValue !== null ? fieldValue.includes(conditionValue) : false; break;
     case "!includes": result = Array.isArray(fieldValue) && conditionValue !== null ? !fieldValue.includes(conditionValue) : true; break;
-    case "regex": 
+    case "regex":
       if (typeof fieldValue === 'string' && typeof conditionValue === 'string') {
         try {
           const regex = new RegExp(conditionValue);
@@ -152,7 +152,7 @@ function checkCondition(condition: FieldCondition | undefined, document: Documen
         result = false;
       }
       break;
-    case "!regex": 
+    case "!regex":
       if (typeof fieldValue === 'string' && typeof conditionValue === 'string') {
         try {
           const regex = new RegExp(conditionValue);
@@ -166,16 +166,16 @@ function checkCondition(condition: FieldCondition | undefined, document: Documen
       break;
     default: result = true;
   }
-  
+
   return result;
 }
 
 // Проверка группы условий
 function checkConditionGroup(group: ConditionGroup, document: DocumentData | null): boolean {
   if (!document || group.conditions.length === 0) return true;
-  
+
   let result = false;
-  
+
   if (group.logic === "AND") {
     result = group.conditions.every(condition => {
       if ('logic' in condition) {
@@ -193,17 +193,17 @@ function checkConditionGroup(group: ConditionGroup, document: DocumentData | nul
       }
     });
   }
-  
+
   return result;
 }
 
 // Проверка всех условий для отображения поля
 function checkAllConditions(field: AdditionalField, document: DocumentData | null): boolean {
   if (!document) return true;
-  
+
   // Если условий нет, поле всегда отображается
   if (!field.conditions || field.conditions.length === 0) return true;
-  
+
   // Проверяем все условия
   return field.conditions.every(condition => {
     if ('logic' in condition) {
@@ -232,27 +232,27 @@ function processTemplate(template: string, data: Record<string, any>): string {
 // Функция для запроса данных с API-эндпоинтов
 async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData): Promise<Record<string, any>> {
   const result: Record<string, any> = {};
-  
+
   if (!endpoints || endpoints.length === 0) {
     return result;
   }
-  
+
   // Получаем значение авторизационного ключа из cookie
   const authKey = getCookie('key');
   // Подготавливаем заголовки для запроса
   const headers: Record<string, string> = {};
-  
+
   if (authKey) {
     headers['Authorization'] = authKey;
   }
-  
+
   const config = getConfig();
-  
+
   for (const endpoint of endpoints) {
     try {
       // Обрабатываем шаблонные переменные в URL
       let processedUrl = processTemplate(endpoint.url, { document: documentData });
-      
+
       // Проверяем, нужно ли добавить базовый URL из конфига
       if (processedUrl.startsWith("{config.") && processedUrl.includes("}")) {
         // Извлекаем имя конфиг-переменной
@@ -260,10 +260,10 @@ async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData
         if (configVarMatch && configVarMatch[1]) {
           const configVar = configVarMatch[1];
           const baseUrl = (config as any)[configVar] || '';
-          
+
           // Заменяем шаблон на значение из конфига и убираем ведущий слэш, если он есть
           processedUrl = processedUrl.replace(
-            `{config.${configVar}}`, 
+            `{config.${configVar}}`,
             baseUrl
           ).replace(/^\{config\.[^}]+\}\//, baseUrl);
         }
@@ -279,26 +279,26 @@ async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData
           processedUrl = `${config.backendUrl}${processedUrl}`;
         }
       }
-      
+
       // Обрабатываем параметры запроса
-      const processedParams = endpoint.params 
+      const processedParams = endpoint.params
         ? Object.entries(endpoint.params).reduce((acc, [key, value]) => {
-            if (typeof value === 'string') {
-              acc[key] = processTemplate(value, { document: documentData });
-            } else {
-              acc[key] = value;
-            }
-            return acc;
-          }, {} as Record<string, any>)
+          if (typeof value === 'string') {
+            acc[key] = processTemplate(value, { document: documentData });
+          } else {
+            acc[key] = value;
+          }
+          return acc;
+        }, {} as Record<string, any>)
         : {};
-      
+
       // Выполняем запрос
       let response;
-      const requestConfig = { 
+      const requestConfig = {
         params: processedParams,
-        headers: { ...headers, ...(endpoint.headers || {}) } 
+        headers: { ...headers, ...(endpoint.headers || {}) }
       };
-      
+
       switch (endpoint.method) {
         case 'GET':
           response = await axios.get(processedUrl, requestConfig);
@@ -313,7 +313,7 @@ async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData
           response = await axios.delete(processedUrl, requestConfig);
           break;
       }
-      
+
       if (response?.data) {
         result[endpoint.id] = response.data;
       }
@@ -321,24 +321,24 @@ async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData
       console.error(`Ошибка при запросе к ${endpoint.url}:`, error);
     }
   }
-  
+
   return result;
 }
 
 // Отфильтрованные поля в зависимости от условий
 const filteredAdditionalFields = computed(() => {
   if (!selectedTemplate.value) return [];
-  
+
   const document = props.document || null;
-  
-  return selectedTemplate.value.additional_fields.filter(field => 
+
+  return selectedTemplate.value.additional_fields.filter(field =>
     checkAllConditions(field, document)
   );
 });
 
 // Проверка, все ли обязательные поля заполнены
 const isFormValid = computed(() => {
-  return filteredAdditionalFields.value.every(field => 
+  return filteredAdditionalFields.value.every(field =>
     !field.required || additionalFieldValues.value[field.id] !== undefined
   );
 });
@@ -356,13 +356,13 @@ watch(() => props.isOpen, (isOpen) => {
 // Обработчик выбора шаблона
 const handleTemplateSelect = async (template: DocumentTemplate) => {
   selectedTemplate.value = template;
-  
+
   const document = props.document || null;
-  
+
   // Запрашиваем данные с API, если указаны эндпоинты
   if (template.api_endpoints && template.api_endpoints.length > 0 && document) {
     apiDataLoading.value = true;
-    
+
     try {
       apiData.value = await fetchApiData(template.api_endpoints, document);
     } catch (error) {
@@ -372,13 +372,13 @@ const handleTemplateSelect = async (template: DocumentTemplate) => {
       apiDataLoading.value = false;
     }
   }
-  
+
   // Если нет дополнительных полей или все они имеют defaultValue и не требуют заполнения, сразу генерируем документ
-  if (template.additional_fields.length === 0 || 
-      template.additional_fields.every(field => 
-        !checkAllConditions(field, document) || 
-        field.defaultValue !== null
-      )) {
+  if (template.additional_fields.length === 0 ||
+    template.additional_fields.every(field =>
+      !checkAllConditions(field, document) ||
+      field.defaultValue !== null
+    )) {
     // Заполняем дефолтные значения
     template.additional_fields.forEach(field => {
       if (field.defaultValue !== null) {
@@ -408,7 +408,7 @@ const handleGenerateWithAdditionalFields = async () => {
   try {
     // Форматируем даты перед отправкой
     const formattedFields = { ...additionalFieldValues.value };
-    
+
     // Если есть выбранный шаблон и дополнительные поля
     if (selectedTemplate.value && selectedTemplate.value.additional_fields.length > 0) {
       selectedTemplate.value.additional_fields.forEach(field => {
@@ -421,14 +421,14 @@ const handleGenerateWithAdditionalFields = async () => {
         }
       });
     }
-    
+
     // Объединяем данные документа с дополнительными полями и данными API
     const documentWithAdditionalFields = {
       ...props.document,
       additional_fields: formattedFields,
       api_data: apiData.value
     };
-    
+
     await generateDocument(documentWithAdditionalFields, selectedTemplate.value.id);
     emit("update:isOpen", false);
   } catch (error) {
@@ -453,18 +453,14 @@ const handleGenerateWithAdditionalFields = async () => {
         </component>
 
         <div class="py-4 space-y-4">
-          <div v-for="template in templates" :key="template.id" 
-              class="flex items-center justify-between p-4 border rounded-lg">
+          <div v-for="template in templates" :key="template.id"
+            class="flex items-center justify-between p-4 border rounded-lg mb-4">
             <div class="flex-1">
               <h4 class="font-medium">{{ template.name }}</h4>
               <p class="text-sm text-muted-foreground">{{ template.description }}</p>
             </div>
-            <component 
-              :is="CustomButton"
-              :disabled="isGenerating || apiDataLoading" 
-              @click="handleTemplateSelect(template)"
-              class="ml-4"
-            >
+            <component :is="CustomButton" :disabled="isGenerating || apiDataLoading"
+              @click="handleTemplateSelect(template)" class="ml-4">
               Выбрать
             </component>
           </div>
@@ -491,63 +487,40 @@ const handleGenerateWithAdditionalFields = async () => {
             <p class="font-medium">Дополнительные данные загружены с сервера</p>
             <p class="text-sm text-muted-foreground">Данные будут использованы при генерации документа</p>
           </div>
-          
+
           <div class="space-y-4">
             <div v-for="field in filteredAdditionalFields" :key="field.id" class="space-y-2">
               <component :is="CustomLabel" :for="field.id" class="block">
                 {{ field.name }}
                 <span v-if="field.required" class="text-destructive">*</span>
               </component>
-              
-              <component 
-                v-if="field.type === 'string' || field.type === 'number'" 
-                :is="CustomInput"
-                :id="field.id"
-                :type="field.type === 'number' ? 'number' : 'text'"
-                :placeholder="field.description"
-                v-model="additionalFieldValues[field.id]"
-                :required="field.required"
-                class="w-full"
-              />
-              
-              <component 
-                v-else-if="field.type === 'date'" 
-                :is="CustomInput"
-                :id="field.id"
-                type="date"
-                :placeholder="field.description"
-                v-model="additionalFieldValues[field.id]"
-                :required="field.required"
-                class="w-full"
-              />
-              
+
+              <component v-if="field.type === 'string' || field.type === 'number'" :is="CustomInput" :id="field.id"
+                :type="field.type === 'number' ? 'number' : 'text'" :placeholder="field.description"
+                v-model="additionalFieldValues[field.id]" :required="field.required" class="w-full" />
+
+              <component v-else-if="field.type === 'date'" :is="CustomInput" :id="field.id" type="date"
+                :placeholder="field.description" v-model="additionalFieldValues[field.id]" :required="field.required"
+                class="w-full" />
+
               <div v-else-if="field.type === 'boolean'" class="flex items-center space-x-2">
-                <component 
-                  :is="CustomCheckbox"
-                  :id="field.id"
-                  v-model="additionalFieldValues[field.id]"
-                  :required="field.required"
-                />
+                <component :is="CustomCheckbox" :id="field.id" v-model="additionalFieldValues[field.id]"
+                  :required="field.required" />
                 <component :is="CustomLabel" :for="field.id">{{ field.description }}</component>
               </div>
-              
+
               <p class="text-sm text-muted-foreground">{{ field.description }}</p>
             </div>
           </div>
         </div>
 
         <component :is="CustomDialogFooter" class="flex justify-between sm:justify-end sm:space-x-2">
-          <component :is="CustomButton" 
-            variant="outline" 
-            @click="showAdditionalFieldsDialog = false"
-            :disabled="isGenerating"
-          >
+          <component :is="CustomButton" variant="outline" @click="showAdditionalFieldsDialog = false"
+            :disabled="isGenerating">
             Назад
           </component>
-          <component :is="CustomButton" 
-            @click="handleGenerateWithAdditionalFields"
-            :disabled="!isFormValid || isGenerating"
-          >
+          <component :is="CustomButton" @click="handleGenerateWithAdditionalFields"
+            :disabled="!isFormValid || isGenerating">
             Сгенерировать
             <span v-if="isGenerating" class="ml-2">...</span>
           </component>
@@ -559,4 +532,4 @@ const handleGenerateWithAdditionalFields = async () => {
 
 <style scoped>
 /* Удаляем старые стили, так как теперь используем компоненты Shadcn */
-</style> 
+</style>
