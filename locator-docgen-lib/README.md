@@ -237,7 +237,60 @@ app.use(install, {
 
 #### DocumentDialog
 
-Компонент диалога для генерации документа.
+Компонент диалога для генерации одного документа.
+
+#### DocumentSetDialog
+
+Новый компонент для генерации комплекта документов в zip-архиве. Позволяет пользователю выбрать несколько шаблонов документов и получить их в виде zip-файла.
+
+```vue
+<template>
+  <div>
+    <button @click="showSetDialog = true">Генерировать комплект документов</button>
+
+    <DocumentSetDialog
+      :is-open="showSetDialog"
+      :document="documentData"
+      :templates="documentTemplates"
+      :options="{ filename: 'my_document_set' }"
+      @update:is-open="showSetDialog = $event"
+      @success="handleSuccess"
+      @error="handleError"
+    />
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { DocumentSetDialog } from 'locator-docgen-lib';
+
+const showSetDialog = ref(false);
+const documentData = ref({
+  ref_id: "12345",
+  // ... данные документа
+});
+
+const documentTemplates = ref([
+  {
+    id: "template1",
+    name: "Шаблон 1",
+    description: "Описание шаблона 1",
+    additional_fields: []
+  },
+  // ... другие шаблоны
+]);
+
+const handleSuccess = (message) => {
+  console.log('Успех:', message);
+};
+
+const handleError = (message) => {
+  console.error('Ошибка:', message);
+};
+</script>
+```
+
+Подробная документация по использованию комплекта документов доступна в [DOCUMENT_SET_USAGE.md](./DOCUMENT_SET_USAGE.md).
 
 Пропсы:
 
@@ -266,9 +319,10 @@ app.use(install, {
 
 Создает API для работы с документами.
 
-Возвращает объект с методом:
+Возвращает объект с методами:
 
-- `generateDocument(data: EnhancedDocumentData, templateName: string): Promise<boolean>`
+- `generateDocument(data: EnhancedDocumentData, templateName: string): Promise<boolean>` - генерация одного документа
+- `generateDocumentSet(request: DocumentSetGenerationRequest): Promise<boolean>` - генерация комплекта документов в zip-архиве
 
 ### Типы
 
@@ -283,6 +337,15 @@ interface DocumentData {
 interface EnhancedDocumentData extends DocumentData {
   additional_fields?: Record<string, any>;
   api_data?: Record<string, any>;
+}
+
+// Запрос на генерацию комплекта документов
+interface DocumentSetGenerationRequest {
+  documents: Array<{
+    templateName: string;
+    data: EnhancedDocumentData;
+  }>;
+  zipFilename?: string;
 }
 
 // Шаблон документа

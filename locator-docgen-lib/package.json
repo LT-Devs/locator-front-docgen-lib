@@ -8,7 +8,9 @@
   "types": "@types/locator-docgen-lib.d.ts",
   "typesVersions": {
     "*": {
-      "*": ["@types/locator-docgen-lib.d.ts"]
+      "*": [
+        "@types/locator-docgen-lib.d.ts"
+      ]
     }
   },
   "files": [
@@ -32,6 +34,7 @@
     "dotenv": "^16.4.7",
     "embla-carousel-vue": "^8.6.0",
     "handsontable": "^15.0.1",
+    "jszip": "^3.10.1",
     "lucide-vue-next": "^0.469.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.2.5",
@@ -45,6 +48,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/jszip": "^3.4.1",
     "@types/lodash": "^4.17.15",
     "@types/node": "^22.10.5",
     "@vitejs/plugin-vue": "^5.2.1",

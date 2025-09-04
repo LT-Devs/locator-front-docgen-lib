@@ -1,12 +1,13 @@
 // Экспорты компонентов
 import DocumentDialog from '@/components/DocumentDialog.vue';
+import DocumentSetDialog from '@/components/DocumentSetDialog.vue';
 
 // Экспорты API
 import { documentApi } from './api/documentApi';
 
 // Экспорты типов
 import type { DocumentData } from './types/document_data';
-import type { DocumentGenerationRequest, EnhancedDocumentData } from './api/documentApi';
+import type { DocumentGenerationRequest, EnhancedDocumentData, DocumentSetGenerationRequest } from './api/documentApi';
 
 // Экспорты настроек
 import { setConfig, getConfig, defaultConfig, provideConfig, useConfig, type DocgenConfig } from './config';
@@ -21,11 +22,13 @@ function install(app: any, options: Partial<DocgenConfig> = {}) {
 
     // Регистрируем компоненты
     app.component('DocumentDialog', DocumentDialog);
+    app.component('DocumentSetDialog', DocumentSetDialog);
 }
 
 // Именованные экспорты
 export {
     DocumentDialog,
+    DocumentSetDialog,
     documentApi,
     setConfig,
     getConfig,
@@ -40,7 +43,8 @@ export type {
     DocumentData,
     DocgenConfig,
     DocumentGenerationRequest,
-    EnhancedDocumentData
+    EnhancedDocumentData,
+    DocumentSetGenerationRequest
 };
 
 // Экспорт по умолчанию (функции установки) для Vue plugins API

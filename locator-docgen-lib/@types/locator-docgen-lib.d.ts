@@ -26,15 +26,25 @@ export interface DocumentApiOptions {
     onError?: (message: string) => void;
 }
 
+export interface DocumentSetGenerationRequest {
+    documents: Array<{
+        templateName: string;
+        data: EnhancedDocumentData;
+    }>;
+    zipFilename?: string;
+}
+
 export interface DocgenConfig {
     fileHandlerBackendUrl: string;
     generateDocumentPath: string;
 }
 
 export const DocumentDialog: import('vue').DefineComponent<{}, {}, any>;
+export const DocumentSetDialog: import('vue').DefineComponent<{}, {}, any>;
 
 export const documentApi: (options?: DocumentApiOptions) => {
     generateDocument: (data: EnhancedDocumentData, templateName: string) => Promise<boolean>;
+    generateDocumentSet: (request: DocumentSetGenerationRequest) => Promise<boolean>;
 };
 
 export const defaultConfig: DocgenConfig;
