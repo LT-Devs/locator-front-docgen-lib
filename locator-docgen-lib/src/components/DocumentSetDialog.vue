@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 // Импортируем компоненты диалога
 import { Dialog } from "@/components/ui/dialog";
@@ -94,6 +95,7 @@ const CustomButton = computed(() => uiComponents.value.Button || Button);
 const CustomCheckbox = computed(() => uiComponents.value.Checkbox || Checkbox);
 const CustomLabel = computed(() => uiComponents.value.Label || Label);
 const CustomInput = computed(() => uiComponents.value.Input || Input);
+const CustomLoadingSpinner = computed(() => uiComponents.value.LoadingSpinner || LoadingSpinner);
 const CustomDialog = computed(() => uiComponents.value.Dialog || Dialog);
 const CustomDialogHeader = computed(() => uiComponents.value.DialogHeader || DialogHeader);
 const CustomDialogFooter = computed(() => uiComponents.value.DialogFooter || DialogFooter);
@@ -106,6 +108,8 @@ const additionalFieldValues = ref<Record<string, Record<string, any>>>({});
 const showAdditionalFieldsDialog = ref(false);
 const apiDataLoading = ref(false);
 const apiData = ref<Record<string, any>>({});
+const showLoadingOverlay = ref(false);
+const loadingText = ref('');
 
 // Вспомогательные функции (копируем из DocumentDialog)
 function getValueByPath(obj: any, path: string): any {
@@ -409,9 +413,12 @@ const handleGenerateDocuments = async () => {
   }
 
   isGenerating.value = true;
+  showLoadingOverlay.value = true;
+  loadingText.value = 'Подготовка данных...';
   
   try {
     // Подготавливаем данные для всех выбранных документов
+    loadingText.value = 'Подготовка данных...';
     const documents = Array.from(selectedTemplates.value).map((templateId) => {
       const template = props.templates.find(t => t.id === templateId);
       if (!template) return null;
@@ -441,24 +448,29 @@ const handleGenerateDocuments = async () => {
         templateName: template.id,
         data: documentWithAdditionalFields
       };
-    }).filter(Boolean);
+    }).filter((doc): doc is { templateName: string; data: EnhancedDocumentData } => doc !== null);
 
     // Генерируем zip-архив с комплектом документов
+    loadingText.value = 'Генерация документов...';
     const zipFilename = props.options?.filename ? 
       `${props.options.filename}_комплект` : 
       `DocumentSet_${props.document.ref_id ?? 'new'}_${new Date().toISOString().split('T')[0]}`;
 
+    loadingText.value = 'Создание архива...';
     await generateDocumentSet({
       documents,
       zipFilename
     });
     
+    loadingText.value = 'Завершение...';
     emit("update:isOpen", false);
   } catch (error) {
     console.error("Ошибка при генерации документов:", error);
     emit('error', 'Произошла ошибка при генерации документов');
   } finally {
     isGenerating.value = false;
+    showLoadingOverlay.value = false;
+    loadingText.value = '';
   }
 };
 </script>
@@ -466,6 +478,13 @@ const handleGenerateDocuments = async () => {
 <template>
   <component :is="CustomDialog" :open="isOpen" @update:open="emit('update:isOpen', $event)">
     <CustomDialogContent :class="props.class">
+      <!-- Индикатор загрузки -->
+      <component 
+        v-if="showLoadingOverlay" 
+        :is="CustomLoadingSpinner" 
+        :text="loadingText" 
+        :overlay="true" 
+      />
       <!-- Диалог выбора шаблонов -->
       <div v-if="!showAdditionalFieldsDialog">
         <component :is="CustomDialogHeader">
@@ -529,7 +548,7 @@ const handleGenerateDocuments = async () => {
               
               <div class="space-y-4">
                 <div v-for="field in template.additional_fields.filter(field => 
-                  checkAllConditions(field, document)
+                  checkAllConditions(field, document || null)
                 )" :key="`${template.id}-${field.id}`" class="space-y-2">
                   <component :is="CustomLabel" :for="`${template.id}-${field.id}`" class="block">
                     {{ field.name }}

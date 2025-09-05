@@ -1,6 +1,7 @@
 // Экспорты компонентов
 import DocumentDialog from '@/components/DocumentDialog.vue';
 import DocumentSetDialog from '@/components/DocumentSetDialog.vue';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // Экспорты API
 import { documentApi } from './api/documentApi';
@@ -23,12 +24,14 @@ function install(app: any, options: Partial<DocgenConfig> = {}) {
     // Регистрируем компоненты
     app.component('DocumentDialog', DocumentDialog);
     app.component('DocumentSetDialog', DocumentSetDialog);
+    app.component('LoadingSpinner', LoadingSpinner);
 }
 
 // Именованные экспорты
 export {
     DocumentDialog,
     DocumentSetDialog,
+    LoadingSpinner,
     documentApi,
     setConfig,
     getConfig,

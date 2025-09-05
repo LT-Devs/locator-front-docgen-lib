@@ -41,6 +41,10 @@ export interface DocgenConfig {
 
 export const DocumentDialog: import('vue').DefineComponent<{}, {}, any>;
 export const DocumentSetDialog: import('vue').DefineComponent<{}, {}, any>;
+export const LoadingSpinner: import('vue').DefineComponent<{
+  text?: string;
+  overlay?: boolean;
+}, {}, any>;
 
 export const documentApi: (options?: DocumentApiOptions) => {
     generateDocument: (data: EnhancedDocumentData, templateName: string) => Promise<boolean>;

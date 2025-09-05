@@ -292,6 +292,27 @@ const handleError = (message) => {
 
 Подробная документация по использованию комплекта документов доступна в [DOCUMENT_SET_USAGE.md](./DOCUMENT_SET_USAGE.md).
 
+#### LoadingSpinner
+
+Компонент индикатора загрузки с анимацией. Используется для отображения процесса генерации документов.
+
+```vue
+<template>
+  <LoadingSpinner 
+    text="Генерация документа..." 
+    :overlay="true" 
+  />
+</template>
+
+<script setup>
+import { LoadingSpinner } from 'locator-docgen-lib';
+</script>
+```
+
+**Props:**
+- `text?: string` - текст для отображения под спиннером
+- `overlay?: boolean` - показывать ли как overlay поверх всего экрана
+
 Пропсы:
 
 - `isOpen`: boolean - Управляет отображением диалога

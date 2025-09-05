@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 // Импортируем компоненты диалога для анимации
 import { Dialog } from "@/components/ui/dialog";
@@ -97,6 +98,7 @@ const CustomButton = computed(() => uiComponents.value.Button || Button);
 const CustomInput = computed(() => uiComponents.value.Input || Input);
 const CustomLabel = computed(() => uiComponents.value.Label || Label);
 const CustomCheckbox = computed(() => uiComponents.value.Checkbox || Checkbox);
+const CustomLoadingSpinner = computed(() => uiComponents.value.LoadingSpinner || LoadingSpinner);
 
 // Добавляем поддержку компонентов Dialog
 const CustomDialog = computed(() => uiComponents.value.Dialog || Dialog);
@@ -111,6 +113,8 @@ const additionalFieldValues = ref<Record<string, any>>({});
 const showAdditionalFieldsDialog = ref(false);
 const apiDataLoading = ref(false);
 const apiData = ref<Record<string, any>>({});
+const showLoadingOverlay = ref(false);
+const loadingText = ref('');
 
 // Вспомогательная функция для получения значения по пути в объекте
 function getValueByPath(obj: any, path: string): any {
@@ -405,8 +409,12 @@ const handleGenerateWithAdditionalFields = async () => {
   }
 
   isGenerating.value = true;
+  showLoadingOverlay.value = true;
+  loadingText.value = 'Подготовка данных...';
+  
   try {
     // Форматируем даты перед отправкой
+    loadingText.value = 'Подготовка данных...';
     const formattedFields = { ...additionalFieldValues.value };
 
     // Если есть выбранный шаблон и дополнительные поля
@@ -429,13 +437,18 @@ const handleGenerateWithAdditionalFields = async () => {
       api_data: apiData.value
     };
 
+    loadingText.value = 'Генерация документа...';
     await generateDocument(documentWithAdditionalFields, selectedTemplate.value.id);
+    
+    loadingText.value = 'Завершение...';
     emit("update:isOpen", false);
   } catch (error) {
     console.error("Ошибка при генерации документа:", error);
     emit('error', 'Произошла ошибка при генерации документа');
   } finally {
     isGenerating.value = false;
+    showLoadingOverlay.value = false;
+    loadingText.value = '';
   }
 };
 </script>
@@ -443,6 +456,13 @@ const handleGenerateWithAdditionalFields = async () => {
 <template>
   <component :is="CustomDialog" :open="isOpen" @update:open="emit('update:isOpen', $event)">
     <CustomDialogContent :class="props.class">
+      <!-- Индикатор загрузки -->
+      <component 
+        v-if="showLoadingOverlay" 
+        :is="CustomLoadingSpinner" 
+        :text="loadingText" 
+        :overlay="true" 
+      />
       <!-- Диалог выбора шаблона -->
       <div v-if="!showAdditionalFieldsDialog">
         <component :is="CustomDialogHeader">
