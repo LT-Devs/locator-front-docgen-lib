@@ -5,6 +5,7 @@ import axios from "axios";
 import { getConfig, useConfig } from "@/config";
 import { documentApi } from "@/api/documentApi";
 import type { DocumentData } from "@/types/document_data";
+import type { EnhancedDocumentData } from "@/api/documentApi";
 
 // Импортируем UI компоненты
 import { Button } from "@/components/ui/button";
@@ -316,7 +317,7 @@ const isFormValid = computed(() => {
     const filteredFields = template.additional_fields.filter(field =>
       checkAllConditions(field, document)
     );
-    
+
     return filteredFields.every(field =>
       !field.required || additionalFieldValues.value[template.id]?.[field.id] !== undefined
     );
@@ -363,14 +364,14 @@ const handleProceedToFields = async () => {
   }
 
   const document = props.document || null;
-  
+
   // Загружаем данные с API для всех выбранных шаблонов
   const allEndpoints = selectedTemplatesWithFields.value
     .flatMap(template => template.api_endpoints || []);
-  
+
   if (allEndpoints.length > 0 && document) {
     apiDataLoading.value = true;
-    
+
     try {
       apiData.value = await fetchApiData(allEndpoints, document);
     } catch (error) {
@@ -387,8 +388,8 @@ const handleProceedToFields = async () => {
     const filteredFields = template.additional_fields.filter(field =>
       checkAllConditions(field, document)
     );
-    
-    return filteredFields.some(field => 
+
+    return filteredFields.some(field =>
       field.required && field.defaultValue === null
     );
   });
@@ -415,7 +416,7 @@ const handleGenerateDocuments = async () => {
   isGenerating.value = true;
   showLoadingOverlay.value = true;
   loadingText.value = 'Подготовка данных...';
-  
+
   try {
     // Подготавливаем данные для всех выбранных документов
     loadingText.value = 'Подготовка данных...';
@@ -425,7 +426,7 @@ const handleGenerateDocuments = async () => {
 
       // Форматируем даты перед отправкой
       const formattedFields = { ...additionalFieldValues.value[templateId] };
-      
+
       if (template.additional_fields.length > 0) {
         template.additional_fields.forEach(field => {
           if (field.type === 'date' && formattedFields[field.id]) {
@@ -438,7 +439,7 @@ const handleGenerateDocuments = async () => {
       }
 
       // Объединяем данные документа с дополнительными полями и данными API
-      const documentWithAdditionalFields = {
+      const documentWithAdditionalFields: EnhancedDocumentData = {
         ...props.document,
         additional_fields: formattedFields,
         api_data: apiData.value
@@ -452,8 +453,8 @@ const handleGenerateDocuments = async () => {
 
     // Генерируем zip-архив с комплектом документов
     loadingText.value = 'Генерация документов...';
-    const zipFilename = props.options?.filename ? 
-      `${props.options.filename}_комплект` : 
+    const zipFilename = props.options?.filename ?
+      `${props.options.filename}_комплект` :
       `DocumentSet_${props.document.ref_id ?? 'new'}_${new Date().toISOString().split('T')[0]}`;
 
     loadingText.value = 'Создание архива...';
@@ -461,7 +462,7 @@ const handleGenerateDocuments = async () => {
       documents,
       zipFilename
     });
-    
+
     loadingText.value = 'Завершение...';
     emit("update:isOpen", false);
   } catch (error) {
@@ -479,12 +480,7 @@ const handleGenerateDocuments = async () => {
   <component :is="CustomDialog" :open="isOpen" @update:open="emit('update:isOpen', $event)">
     <CustomDialogContent :class="props.class">
       <!-- Индикатор загрузки -->
-      <component 
-        v-if="showLoadingOverlay" 
-        :is="CustomLoadingSpinner" 
-        :text="loadingText" 
-        :overlay="true" 
-      />
+      <component v-if="showLoadingOverlay" :is="CustomLoadingSpinner" :text="loadingText" :overlay="true" />
       <!-- Диалог выбора шаблонов -->
       <div v-if="!showAdditionalFieldsDialog">
         <component :is="CustomDialogHeader">
@@ -497,10 +493,8 @@ const handleGenerateDocuments = async () => {
         <div class="py-4 space-y-4">
           <div v-for="template in templates" :key="template.id"
             class="flex items-start space-x-3 p-4 border rounded-lg">
-            <component :is="CustomCheckbox" 
-              :id="`template-${template.id}`"
-              :checked="selectedTemplates.has(template.id)"
-              @update:checked="handleTemplateToggle(template.id)"
+            <component :is="CustomCheckbox" :id="`template-${template.id}`"
+              :checked="selectedTemplates.has(template.id)" @update:checked="handleTemplateToggle(template.id)"
               class="mt-1" />
             <div class="flex-1">
               <component :is="CustomLabel" :for="`template-${template.id}`" class="font-medium cursor-pointer">
@@ -515,8 +509,7 @@ const handleGenerateDocuments = async () => {
           <component :is="CustomButton" variant="outline" @click="emit('update:isOpen', false)">
             Отмена
           </component>
-          <component :is="CustomButton" 
-            @click="handleProceedToFields"
+          <component :is="CustomButton" @click="handleProceedToFields"
             :disabled="selectedTemplates.size === 0 || isGenerating || apiDataLoading">
             Продолжить
             <span v-if="apiDataLoading" class="ml-2">...</span>
@@ -545,9 +538,9 @@ const handleGenerateDocuments = async () => {
                 <h4 class="font-medium">{{ template.name }}</h4>
                 <p class="text-sm text-muted-foreground">{{ template.description }}</p>
               </div>
-              
+
               <div class="space-y-4">
-                <div v-for="field in template.additional_fields.filter(field => 
+                <div v-for="field in template.additional_fields.filter(field =>
                   checkAllConditions(field, document || null)
                 )" :key="`${template.id}-${field.id}`" class="space-y-2">
                   <component :is="CustomLabel" :for="`${template.id}-${field.id}`" class="block">
@@ -555,29 +548,18 @@ const handleGenerateDocuments = async () => {
                     <span v-if="field.required" class="text-destructive">*</span>
                   </component>
 
-                  <component v-if="field.type === 'string' || field.type === 'number'" 
-                    :is="CustomInput" 
-                    :id="`${template.id}-${field.id}`"
-                    :type="field.type === 'number' ? 'number' : 'text'" 
-                    :placeholder="field.description"
-                    v-model="additionalFieldValues[template.id][field.id]" 
-                    :required="field.required" 
-                    class="w-full" />
+                  <component v-if="field.type === 'string' || field.type === 'number'" :is="CustomInput"
+                    :id="`${template.id}-${field.id}`" :type="field.type === 'number' ? 'number' : 'text'"
+                    :placeholder="field.description" v-model="additionalFieldValues[template.id][field.id]"
+                    :required="field.required" class="w-full" />
 
-                  <component v-else-if="field.type === 'date'" 
-                    :is="CustomInput" 
-                    :id="`${template.id}-${field.id}`" 
-                    type="date"
-                    :placeholder="field.description" 
-                    v-model="additionalFieldValues[template.id][field.id]" 
-                    :required="field.required"
-                    class="w-full" />
+                  <component v-else-if="field.type === 'date'" :is="CustomInput" :id="`${template.id}-${field.id}`"
+                    type="date" :placeholder="field.description" v-model="additionalFieldValues[template.id][field.id]"
+                    :required="field.required" class="w-full" />
 
                   <div v-else-if="field.type === 'boolean'" class="flex items-center space-x-2">
-                    <component :is="CustomCheckbox" 
-                      :id="`${template.id}-${field.id}`" 
-                      v-model="additionalFieldValues[template.id][field.id]"
-                      :required="field.required" />
+                    <component :is="CustomCheckbox" :id="`${template.id}-${field.id}`"
+                      v-model="additionalFieldValues[template.id][field.id]" :required="field.required" />
                     <component :is="CustomLabel" :for="`${template.id}-${field.id}`">{{ field.description }}</component>
                   </div>
 
@@ -593,8 +575,7 @@ const handleGenerateDocuments = async () => {
             :disabled="isGenerating">
             Назад
           </component>
-          <component :is="CustomButton" @click="handleGenerateDocuments"
-            :disabled="!isFormValid || isGenerating">
+          <component :is="CustomButton" @click="handleGenerateDocuments" :disabled="!isFormValid || isGenerating">
             Сгенерировать комплект
             <span v-if="isGenerating" class="ml-2">...</span>
           </component>
