@@ -4,6 +4,7 @@ import axios from 'axios';
 const createAxiosInstance = (baseURL?: string) => {
   const axiosInstance = axios.create({
     baseURL: baseURL || '',
+    withCredentials: true,
   });
 
   // Вспомогательная функция для получения cookie

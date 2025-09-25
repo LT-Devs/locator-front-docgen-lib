@@ -3,12 +3,31 @@ import type { Color } from '@/components/ui/theme/theming/utils/data'
 import { Button } from '@/components/ui/button'
 import { CircleCheck } from 'lucide-vue-next'
 import { useConfigStore } from '@/lib/config'
+import { useColorMode } from '@vueuse/core'
 import { themes } from '@/lib/themes'
-defineProps<{
+const props = defineProps<{
   allColors: Color[]
 }>()
 
 const { theme, setTheme } = useConfigStore()
+const colorMode = useColorMode()
+
+// Function to update theme classes on document
+function updateThemeClasses() {
+  // Remove all existing theme classes
+  document.documentElement.classList.remove(
+    ...props.allColors.map(color => `theme-${color}`),
+  )
+  // Add the new theme class
+  document.documentElement.classList.add(`theme-${theme.value}`)
+  
+  // Ensure dark mode is applied if needed
+  if (colorMode.value === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
 </script>
 
 <template>
@@ -24,7 +43,7 @@ const { theme, setTheme } = useConfigStore()
     <div class="space-y-1.5 pt-6">
       <div class="grid grid-cols-3 gap-2 py-1.5">
         <Button
-          v-for="(color, index) in allColors"
+          v-for="(color, index) in props.allColors"
           :key="index"
           variant="outline"
           class="h-8 justify-start px-1"
@@ -33,7 +52,7 @@ const { theme, setTheme } = useConfigStore()
               ? 'border-foreground border-2'
               : ''
           "
-          @click="setTheme(color)"
+          @click="setTheme(color); updateThemeClasses()"
         >
           <span
             class="h-5 w-5 rounded-full flex items-center justify-center shrink-0"

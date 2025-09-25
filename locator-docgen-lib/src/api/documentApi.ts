@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 import JSZip from 'jszip';
 import { getConfig } from '@/config';
 import type { DocumentData } from '@/types/document_data';
@@ -40,7 +40,7 @@ function documentApiFunction(options?: DocumentApiOptions) {
                 template_name: templateName
             };
 
-            const response = await axios.post(
+            const response = await axiosInstance.post(
                 `${config.fileHandlerBackendUrl}${config.generateDocumentPath}`,
                 request,
                 { responseType: 'blob' }
@@ -89,7 +89,7 @@ function documentApiFunction(options?: DocumentApiOptions) {
                     template_name: doc.templateName
                 };
 
-                const response = await axios.post(
+                const response = await axiosInstance.post(
                     `${config.fileHandlerBackendUrl}${config.generateDocumentPath}`,
                     documentRequest,
                     { responseType: 'blob' }
