@@ -67,8 +67,7 @@ export interface DocumentTemplate {
   description: string;
   api_endpoints?: ApiEndpoint[];
   additional_fields: AdditionalField[];
-  type?: "group";
-  templates?: DocumentTemplate[];
+  templates?: DocumentTemplate[]; // Если есть - это группа, если нет - единичный шаблон
 }
 
 export interface UnifiedDialogOptions {
@@ -131,12 +130,12 @@ const showLoadingOverlay = ref(false);
 const loadingText = ref('');
 
 // Разделяем шаблоны на две категории
-const reportTemplates = computed(() => 
-  props.templates.filter(template => template.name === "Скачать отчет")
+const reportTemplates = computed(() =>
+  props.templates.filter(template => !template.templates) // Единичные документы (без поля templates)
 );
 
-const documentGroups = computed(() => 
-  props.templates.filter(template => template.type === "group")
+const documentGroups = computed(() =>
+  props.templates.filter(template => template.templates) // Группы документов (с полем templates)
 );
 
 // Получаем все шаблоны документов из групп
@@ -376,7 +375,7 @@ watch(() => props.isOpen, (isOpen) => {
 // Обработчик выбора действия
 const handleActionSelect = (action: 'report' | 'documents') => {
   selectedAction.value = action;
-  
+
   if (action === 'report') {
     // Для отчета сразу начинаем генерацию
     handleGenerateReport();
@@ -414,7 +413,7 @@ const handleGenerateReport = async () => {
   loadingText.value = 'Подготовка отчета...';
 
   try {
-    // Находим шаблон отчета
+    // Находим первый доступный единичный шаблон
     const reportTemplate = reportTemplates.value[0];
     if (!reportTemplate) {
       emit('error', 'Шаблон отчета не найден');
@@ -436,7 +435,7 @@ const handleGenerateReport = async () => {
 
     loadingText.value = 'Генерация отчета...';
     await generateDocument(documentWithAdditionalFields, reportTemplate.id);
-    
+
     loadingText.value = 'Завершение...';
     emit("update:isOpen", false);
   } catch (error) {
@@ -571,10 +570,10 @@ const handleGenerateDocuments = async () => {
 
 <template>
   <component :is="CustomDialog" :open="isOpen" @update:open="emit('update:isOpen', $event)">
-    <CustomDialogContent :class="props.class">
+    <CustomDialogContent :class="`max-h-[90vh] overflow-y-auto ${props.class || ''}`">
       <!-- Индикатор загрузки -->
       <component v-if="showLoadingOverlay" :is="CustomLoadingSpinner" :text="loadingText" :overlay="true" />
-      
+
       <!-- Выбор действия -->
       <div v-if="!selectedAction">
         <component :is="CustomDialogHeader">
@@ -585,23 +584,25 @@ const handleGenerateDocuments = async () => {
         </component>
 
         <div class="py-6 space-y-4">
-          <!-- Кнопка скачивания отчета -->
-          <div v-if="reportTemplates.length > 0" 
+          <!-- Единичные шаблоны (отчеты) -->
+          <div v-for="template in reportTemplates" :key="template.id"
             class="flex items-center justify-between p-6 border-2 border-dashed border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer"
             @click="handleActionSelect('report')">
             <div class="flex items-center space-x-4">
               <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                  </path>
                 </svg>
               </div>
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">Скачать отчет</h3>
-                <p class="text-sm text-gray-600">Скачать готовый отчет по документу</p>
+                <h3 class="text-lg font-semibold text-gray-900">{{ template.name }}</h3>
+                <p class="text-sm text-gray-600">{{ template.description }}</p>
               </div>
             </div>
             <component :is="CustomButton" variant="outline" class="ml-4">
-              Скачать
+              Выполнить
             </component>
           </div>
 
@@ -612,7 +613,9 @@ const handleGenerateDocuments = async () => {
             <div class="flex items-center space-x-4">
               <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                 <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                  </path>
                 </svg>
               </div>
               <div>
@@ -645,19 +648,19 @@ const handleGenerateDocuments = async () => {
           </component>
         </component>
 
-        <div class="py-4 space-y-6">
+        <div class="py-4 space-y-6 max-h-[60vh] overflow-y-auto">
           <div v-for="group in documentGroups" :key="group.id" class="space-y-4">
             <div class="border-b pb-2">
               <h3 class="text-lg font-semibold text-gray-900">{{ group.name }}</h3>
               <p class="text-sm text-gray-600">{{ group.description }}</p>
             </div>
-            
+
             <div class="space-y-3">
               <div v-for="template in group.templates" :key="template.id"
                 class="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                 <component :is="CustomCheckbox" :id="`template-${template.id}`"
                   :checked="selectedTemplates.has(template.id)" @update:checked="handleTemplateToggle(template.id)"
-                  class="mt-1" />
+                  class="mt-1" @click="handleTemplateToggle(template.id)" />
                 <div class="flex-1">
                   <component :is="CustomLabel" :for="`template-${template.id}`" class="font-medium cursor-pointer">
                     {{ template.name }}
@@ -675,7 +678,7 @@ const handleGenerateDocuments = async () => {
         </div>
 
         <component :is="CustomDialogFooter">
-          <component :is="CustomButton" variant="outline" @click="selectedAction = null">
+          <component :is="CustomButton" variant="outline" @click="{ selectedAction = null; selectedTemplates.clear() }">
             Назад
           </component>
           <component :is="CustomButton" @click="handleProceedToFields"
@@ -695,7 +698,7 @@ const handleGenerateDocuments = async () => {
           </component>
         </component>
 
-        <div class="py-4">
+        <div class="py-4 max-h-[60vh] overflow-y-auto">
           <div v-if="Object.keys(apiData).length > 0" class="mb-4 p-3 bg-muted rounded-md">
             <p class="font-medium">Дополнительные данные загружены с сервера</p>
             <p class="text-sm text-muted-foreground">Данные будут использованы при генерации документов</p>
@@ -707,6 +710,7 @@ const handleGenerateDocuments = async () => {
                 <h4 class="font-medium">{{ template.name }}</h4>
                 <p class="text-sm text-muted-foreground">{{ template.description }}</p>
               </div>
+
 
               <div class="space-y-4">
                 <div v-for="field in template.additional_fields.filter(field =>
@@ -738,14 +742,13 @@ const handleGenerateDocuments = async () => {
                       <component :is="CustomSelectValue" :placeholder="field.description" />
                     </component>
                     <component :is="CustomSelectContent">
-                      <component v-for="option in field.options" :key="option.value" :is="CustomSelectItem" 
+                      <component v-for="option in field.options" :key="option.value" :is="CustomSelectItem"
                         :value="option.value" :disabled="option.disabled">
                         {{ option.label }}
                       </component>
                     </component>
                   </component>
 
-                  <p class="text-sm text-muted-foreground">{{ field.description }}</p>
                 </div>
               </div>
             </div>
@@ -753,10 +756,6 @@ const handleGenerateDocuments = async () => {
         </div>
 
         <component :is="CustomDialogFooter" class="flex justify-between sm:justify-end sm:space-x-2">
-          <component :is="CustomButton" variant="outline" @click="showAdditionalFieldsDialog = false"
-            :disabled="isGenerating">
-            Назад
-          </component>
           <component :is="CustomButton" @click="handleGenerateDocuments" :disabled="!isFormValid || isGenerating">
             Сгенерировать комплект
             <span v-if="isGenerating" class="ml-2">...</span>
@@ -787,5 +786,28 @@ const handleGenerateDocuments = async () => {
 
 .hover\:bg-gray-50:hover {
   background-color: rgb(249 250 251);
+}
+
+/* Стили для скролла */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225);
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(156 163 175);
 }
 </style>

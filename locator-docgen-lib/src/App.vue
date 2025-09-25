@@ -62,21 +62,21 @@ const handleError = (message: string) => {
           <h2 class="text-xl font-semibold mb-4">Доступные шаблоны</h2>
           <p class="text-gray-600 mb-4">Список доступных шаблонов для генерации</p>
           <div class="space-y-4">
-            <!-- Отчеты -->
-            <div v-if="documentTemplates.some(t => t.name === 'Скачать отчет')" class="space-y-2">
-              <h3 class="font-medium text-gray-900">Отчеты</h3>
-              <div v-for="template in documentTemplates.filter(t => t.name === 'Скачать отчет')" :key="template.id" 
+            <!-- Единичные шаблоны (отчеты) -->
+            <div v-if="documentTemplates.some(t => !t.templates)" class="space-y-2">
+              <h3 class="font-medium text-gray-900">Единичные шаблоны</h3>
+              <div v-for="template in documentTemplates.filter(t => !t.templates)" :key="template.id" 
                 class="flex items-center justify-between p-3 bg-blue-50 rounded">
                 <div>
                   <span class="font-medium">{{ template.name }}</span>
                   <span class="text-sm text-gray-500 ml-2">{{ template.description }}</span>
                 </div>
-                <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">Отчет</span>
+                <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">Шаблон</span>
               </div>
             </div>
 
             <!-- Группы документов -->
-            <div v-for="group in documentTemplates.filter(t => t.type === 'group')" :key="group.id" class="space-y-2">
+            <div v-for="group in documentTemplates.filter(t => t.templates)" :key="group.id" class="space-y-2">
               <h3 class="font-medium text-gray-900">{{ group.name }}</h3>
               <p class="text-sm text-gray-600 mb-2">{{ group.description }}</p>
               <div class="space-y-1">

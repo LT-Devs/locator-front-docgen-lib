@@ -16,13 +16,33 @@
     "additional_fields": []
   },
   {
+    "id": "example_2",
+    "name": "Экспорт данных",
+    "description": "Экспортировать данные в Excel",
+    "api_endpoints": [],
+    "additional_fields": [
+      {
+        "id": "export_format",
+        "name": "Формат экспорта",
+        "type": "select",
+        "description": "Выберите формат экспорта",
+        "required": true,
+        "defaultValue": "excel",
+        "options": [
+          { "value": "excel", "label": "Excel (.xlsx)" },
+          { "value": "csv", "label": "CSV" },
+          { "value": "pdf", "label": "PDF" }
+        ]
+      }
+    ]
+  },
+  {
     "id": "group_1",
     "name": "Основные документы",
     "description": "Основные документы для подачи заявки",
-    "type": "group",
     "templates": [
       {
-        "id": "example_2",
+        "id": "template_1",
         "name": "Сопроводительное",
         "description": "Стандартный шаблон сопроводительного письма",
         "api_endpoints": [
@@ -61,7 +81,7 @@
         ]
       },
       {
-        "id": "example_3",
+        "id": "template_2",
         "name": "Автобиография",
         "description": "Шаблон автобиографии",
         "api_endpoints": [],
@@ -96,10 +116,9 @@
     "id": "group_2",
     "name": "Дополнительные документы",
     "description": "Дополнительные документы по требованию",
-    "type": "group",
     "templates": [
       {
-        "id": "example_4",
+        "id": "template_3",
         "name": "Заявление",
         "description": "Шаблон заявления",
         "api_endpoints": [],
@@ -122,7 +141,7 @@
         ]
       },
       {
-        "id": "example_5",
+        "id": "template_4",
         "name": "Справка",
         "description": "Шаблон справки",
         "api_endpoints": [],

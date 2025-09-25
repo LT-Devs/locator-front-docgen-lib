@@ -83,8 +83,7 @@ export interface DocumentTemplate {
     description: string;
     api_endpoints?: ApiEndpoint[];
     additional_fields: AdditionalField[];
-    type?: "group";
-    templates?: DocumentTemplate[];
+    templates?: DocumentTemplate[]; // Если есть - это группа, если нет - единичный шаблон
 }
 
 export interface UnifiedDialogOptions {
