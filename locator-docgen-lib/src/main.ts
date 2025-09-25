@@ -2,7 +2,6 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import DocumentDialog from './components/DocumentDialog.vue';
 import { provideConfig, setConfig, type DocgenConfig } from './config';
-import './style.css';
 
 // Экспортируем компоненты для использования в приложении
 export { DocumentDialog };

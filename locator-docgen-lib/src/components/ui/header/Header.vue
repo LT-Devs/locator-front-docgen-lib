@@ -81,7 +81,7 @@ const mode = useColorMode()
                 </g>
             </svg>
 
-            <a class="locator-font pr-3 hidden md:block">локатор.статистика</a>
+            <a class="pr-3 hidden md:block">локатор.статистика</a>
             <Button variant="outline" size="icon" @click="mode = mode === 'light' ? 'dark' : 'light'">
                 <Sun v-if="mode === 'light'" />
                 <Moon v-if="mode === 'dark'" />
@@ -96,14 +96,6 @@ const mode = useColorMode()
 </template>
 
 <style scoped type="text/css">
-.locator-font {
-    font-size: 42px;
-    color: hsl(var(--primary));
-    font-family: 'LocatorFont';
-    letter-spacing: 3px;
-    position: relative;
-}
-
 .st0{fill:hsl(var(--primary));}
 .st1{fill:hsl(var(--background));}
 .st2{opacity:0.18;}

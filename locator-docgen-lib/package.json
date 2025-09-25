@@ -1,10 +1,16 @@
 {
   "name": "locator-docgen-lib",
   "private": false,
-  "version": "1.1.2",
+  "version": "1.1.6",
   "type": "module",
-  "main": "dist/locator-docgen-lib.umd.js",
-  "module": "dist/locator-docgen-lib.es.js",
+  "main": "./dist/locator-docgen-lib.umd.js",
+  "module": "./dist/locator-docgen-lib.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/locator-docgen-lib.es.js",
+      "require": "./dist/locator-docgen-lib.umd.js"
+    }
+  },
   "types": "@types/locator-docgen-lib.d.ts",
   "typesVersions": {
     "*": {

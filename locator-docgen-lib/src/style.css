@@ -39,11 +39,6 @@
   accent-color: hsl(var(--primary)); /* Изменяем цвет чекбокса на основной цвет темы */
 }
 
-@font-face {
-  font-family: "LocatorFont";
-  src: url('@/assets/locator_font.otf');
-}
-
 @layer base {
   * {
     @apply border-border;

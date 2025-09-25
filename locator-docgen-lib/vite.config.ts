@@ -8,6 +8,22 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
+    build: {
+      lib: {
+        entry: 'src/index.ts',
+        name: 'locator-docgen-lib',
+        formats: ['es', 'umd'],
+        fileName: (format) => `locator-docgen-lib.${format}.js`
+      },
+      rollupOptions: {
+        external: ['vue'],
+        output: {
+          globals: {
+            vue: 'Vue'
+          }
+        }
+      }
+    },
     base: '/',
     css: {
       postcss: {
