@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import DocumentDialog from './components/DocumentDialog.vue';
-import DocumentSetDialog from './components/DocumentSetDialog.vue';
+import UnifiedDocumentDialog from './components/UnifiedDocumentDialog.vue';
 import { LoadingSpinner } from './components/ui/loading-spinner';
 import type { DocumentData } from './types/document_data';
+import type { DocumentTemplate } from './components/UnifiedDocumentDialog.vue';
+import documentTemplatesData from './assets/document_templates.json';
 
 // Пример данных документа
 const sampleDocument: DocumentData = {
@@ -14,31 +15,11 @@ const sampleDocument: DocumentData = {
   }
 };
 
-// Пример шаблонов документов
-const documentTemplates = [
-  {
-    id: "notification_template",
-    name: "Уведомление и сопроводительная документация",
-    description: "Стандартный шаблон уведомления и сопроводительной документации",
-    additional_fields: []
-  },
-  {
-    id: "report_template", 
-    name: "Отчет о работе",
-    description: "Шаблон отчета о выполненной работе",
-    additional_fields: []
-  },
-  {
-    id: "contract_template",
-    name: "Договор",
-    description: "Шаблон договора",
-    additional_fields: []
-  }
-];
+// Загружаем шаблоны из JSON файла с правильной типизацией
+const documentTemplates: DocumentTemplate[] = documentTemplatesData as DocumentTemplate[];
 
-// Состояние диалогов
-const isDocumentDialogOpen = ref(false);
-const isDocumentSetDialogOpen = ref(false);
+// Состояние диалога
+const isUnifiedDialogOpen = ref(false);
 
 // Обработчики событий
 const handleSuccess = (message: string) => {
@@ -59,22 +40,12 @@ const handleError = (message: string) => {
       
       <div class="space-y-4">
         <div class="p-6 border rounded-lg">
-          <h2 class="text-xl font-semibold mb-4">Генерация одного документа</h2>
-          <p class="text-gray-600 mb-4">Выберите шаблон для генерации одного документа с индикатором загрузки</p>
+          <h2 class="text-xl font-semibold mb-4">Универсальный диалог документов</h2>
+          <p class="text-gray-600 mb-4">Выберите действие: скачать отчет или сгенерировать комплект документов</p>
           <button 
-            @click="isDocumentDialogOpen = true"
-            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-            Открыть диалог выбора документа
-          </button>
-        </div>
-
-        <div class="p-6 border rounded-lg">
-          <h2 class="text-xl font-semibold mb-4">Генерация комплекта документов</h2>
-          <p class="text-gray-600 mb-4">Выберите несколько шаблонов для генерации комплекта документов в zip-архиве с индикатором загрузки</p>
-          <button 
-            @click="isDocumentSetDialogOpen = true"
-            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-            Открыть диалог выбора комплекта документов
+            @click="isUnifiedDialogOpen = true"
+            class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium">
+            Открыть диалог документов
           </button>
         </div>
 
@@ -86,26 +57,56 @@ const handleError = (message: string) => {
             <LoadingSpinner text="Обработка данных..." />
           </div>
         </div>
+
+        <div class="p-6 border rounded-lg">
+          <h2 class="text-xl font-semibold mb-4">Доступные шаблоны</h2>
+          <p class="text-gray-600 mb-4">Список доступных шаблонов для генерации</p>
+          <div class="space-y-4">
+            <!-- Отчеты -->
+            <div v-if="documentTemplates.some(t => t.name === 'Скачать отчет')" class="space-y-2">
+              <h3 class="font-medium text-gray-900">Отчеты</h3>
+              <div v-for="template in documentTemplates.filter(t => t.name === 'Скачать отчет')" :key="template.id" 
+                class="flex items-center justify-between p-3 bg-blue-50 rounded">
+                <div>
+                  <span class="font-medium">{{ template.name }}</span>
+                  <span class="text-sm text-gray-500 ml-2">{{ template.description }}</span>
+                </div>
+                <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">Отчет</span>
+              </div>
+            </div>
+
+            <!-- Группы документов -->
+            <div v-for="group in documentTemplates.filter(t => t.type === 'group')" :key="group.id" class="space-y-2">
+              <h3 class="font-medium text-gray-900">{{ group.name }}</h3>
+              <p class="text-sm text-gray-600 mb-2">{{ group.description }}</p>
+              <div class="space-y-1">
+                <div v-for="template in group.templates" :key="template.id" 
+                  class="flex items-center justify-between p-3 bg-gray-50 rounded ml-4">
+                  <div>
+                    <span class="font-medium">{{ template.name }}</span>
+                    <span class="text-sm text-gray-500 ml-2">{{ template.description }}</span>
+                    <span v-if="template.additional_fields.length > 0" class="text-xs text-blue-600 ml-2">
+                      ({{ template.additional_fields.length }} полей)
+                      <span v-if="template.additional_fields.some(f => f.type === 'select')" class="text-green-600">
+                        • Select поля
+                      </span>
+                    </span>
+                  </div>
+                  <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">Документ</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Диалог для одного документа -->
-      <DocumentDialog
-        :is-open="isDocumentDialogOpen"
+      <!-- Универсальный диалог документов -->
+      <UnifiedDocumentDialog
+        :is-open="isUnifiedDialogOpen"
         :document="sampleDocument"
         :templates="documentTemplates"
         :options="{ filename: 'sample_document' }"
-        @update:is-open="isDocumentDialogOpen = $event"
-        @success="handleSuccess"
-        @error="handleError"
-      />
-
-      <!-- Диалог для комплекта документов -->
-      <DocumentSetDialog
-        :is-open="isDocumentSetDialogOpen"
-        :document="sampleDocument"
-        :templates="documentTemplates"
-        :options="{ filename: 'sample_document_set' }"
-        @update:is-open="isDocumentSetDialogOpen = $event"
+        @update:is-open="isUnifiedDialogOpen = $event"
         @success="handleSuccess"
         @error="handleError"
       />
