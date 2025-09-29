@@ -53,7 +53,11 @@ export interface SelectOption {
 export interface AdditionalField {
   id: string;
   name: string;
-  type: "string" | "number" | "date" | "boolean" | "select";
+  type: "string" | "number" | "date" | "boolean" | "select" | "api_select";
+  api_endpoint?: string; 
+  optionLabelPath?: string; // путь до поля для отображения в списке
+  optionValuePath?: string; // путь до поля-идентификатора
+  resultsPath?: string; // если массив находится по вложенному пути в ответе
   description: string;
   required: boolean;
   defaultValue: string | number | boolean | null;
@@ -256,6 +260,34 @@ function processTemplate(template: string, data: Record<string, any>): string {
     const value = _.get(data, path.trim());
     return value !== undefined ? String(value) : match;
   });
+}
+
+// Возвращает массив объектов-опций для поля api_select
+function getApiItemsForField(field: AdditionalField): any[] {
+  if (!field.api_endpoint) return [];
+  const raw = apiData.value[field.api_endpoint];
+  if (!raw) return [];
+  // Если указан resultsPath, извлекаем массив по нему, иначе ожидаем, что raw — это массив
+  const items = field.resultsPath ? _.get(raw, field.resultsPath) : raw;
+  return Array.isArray(items) ? items : [];
+}
+
+// Собирает опции для Select из объектов ответа API
+function buildApiSelectOptions(field: AdditionalField): SelectOption[] {
+  const items = getApiItemsForField(field);
+  const labelPath = field.optionLabelPath || 'name';
+  const valuePath = field.optionValuePath || 'id';
+  return items.map((item) => ({
+    label: String(_.get(item, labelPath) ?? ''),
+    value: String(_.get(item, valuePath) ?? ''),
+  })).filter(o => o.label !== '' && o.value !== '');
+}
+
+// Находит полный объект по выбранному value
+function findApiItemByValue(field: AdditionalField, selectedValue: string | number): any | undefined {
+  const items = getApiItemsForField(field);
+  const valuePath = field.optionValuePath || 'id';
+  return items.find(item => String(_.get(item, valuePath)) === String(selectedValue));
 }
 
 async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData): Promise<Record<string, any>> {
@@ -526,6 +558,13 @@ const handleGenerateDocuments = async () => {
             if (dateParts.length === 3) {
               formattedFields[field.id] = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
             }
+          } else if (field.type === 'api_select' && formattedFields[field.id] !== undefined) {
+            // Преобразуем выбранный идентификатор в полный объект
+            const selected = formattedFields[field.id];
+            const fullObject = findApiItemByValue(field, selected);
+            if (fullObject !== undefined) {
+              formattedFields[field.id] = fullObject;
+            }
           }
         });
       }
@@ -744,6 +783,19 @@ const handleGenerateDocuments = async () => {
                     <component :is="CustomSelectContent">
                       <component v-for="option in field.options" :key="option.value" :is="CustomSelectItem"
                         :value="option.value" :disabled="option.disabled">
+                        {{ option.label }}
+                      </component>
+                    </component>
+                  </component>
+                  
+                  <component v-else-if="field.type === 'api_select'" :is="CustomSelect"
+                    v-model="additionalFieldValues[template.id][field.id]" :required="field.required">
+                    <component :is="CustomSelectTrigger" class="w-full">
+                      <component :is="CustomSelectValue" :placeholder="field.description" />
+                    </component>
+                    <component :is="CustomSelectContent">
+                      <component v-for="option in buildApiSelectOptions(field)" :key="option.value" :is="CustomSelectItem"
+                        :value="option.value">
                         {{ option.label }}
                       </component>
                     </component>
