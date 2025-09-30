@@ -124,18 +124,18 @@
         "api_endpoints": [],
         "additional_fields": [
           {
-            "id": "request_type",
-            "name": "Тип заявления",
+            "id": "spravka_type",
+            "name": "Тип справки",
             "type": "select",
-            "description": "Тип подаваемого заявления",
+            "description": "Тип запрашиваемой справки",
             "required": true,
             "defaultValue": null,
             "options": [
-              { "value": "employment", "label": "О приеме на работу" },
-              { "value": "vacation", "label": "О предоставлении отпуска" },
-              { "value": "transfer", "label": "О переводе" },
-              { "value": "termination", "label": "Об увольнении" },
-              { "value": "other", "label": "Другое" }
+              { "value": "salary", "label": "О заработной плате" },
+              { "value": "employment", "label": "О трудовой деятельности" },
+              { "value": "income", "label": "О доходах" },
+              { "value": "family", "label": "О составе семьи" },
+              { "value": "medical", "label": "Медицинская справка" }
             ]
           }
         ]

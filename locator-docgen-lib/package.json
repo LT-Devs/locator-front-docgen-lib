@@ -1,7 +1,7 @@
 {
   "name": "locator-docgen-lib",
   "private": false,
-  "version": "1.1.6",
+  "version": "1.2.3",
   "type": "module",
   "main": "./dist/locator-docgen-lib.umd.js",
   "module": "./dist/locator-docgen-lib.es.js",

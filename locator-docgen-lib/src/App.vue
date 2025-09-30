@@ -5,7 +5,7 @@ import { LoadingSpinner } from './components/ui/loading-spinner';
 import type { DocumentData } from './types/document_data';
 import type { DocumentTemplate } from './components/UnifiedDocumentDialog.vue';
 import documentTemplatesData from './assets/document_templates.json';
-
+import "./style.css"
 // Пример данных документа
 const sampleDocument: DocumentData = {
   ref_id: "12345",

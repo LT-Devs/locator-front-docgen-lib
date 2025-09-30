@@ -132,6 +132,8 @@ const apiDataLoading = ref(false);
 const apiData = ref<Record<string, any>>({});
 const showLoadingOverlay = ref(false);
 const loadingText = ref('');
+// Состояние аккордеона для групп документов
+const expandedGroups = ref<Set<string>>(new Set());
 
 // Разделяем шаблоны на две категории
 const reportTemplates = computed(() =>
@@ -379,17 +381,86 @@ const selectedTemplatesWithFields = computed(() => {
   return allDocumentTemplates.value.filter(template => selectedTemplates.value.has(template.id));
 });
 
-// Проверка, все ли обязательные поля заполнены для всех выбранных шаблонов
-const isFormValid = computed(() => {
-  return selectedTemplatesWithFields.value.every(template => {
+// Объединенные поля для выбранных шаблонов (группировка по имени поля)
+const mergedFields = computed(() => {
+  const fieldMap = new Map<string, {
+    id: string;
+    name: string;
+    type: string;
+    description: string;
+    required: boolean;
+    defaultValue: any;
+    options?: SelectOption[];
+    api_endpoint?: string;
+    optionLabelPath?: string;
+    optionValuePath?: string;
+    resultsPath?: string;
+    conditions?: any[];
+    templates: string[]; // ID шаблонов, использующих это поле
+  }>();
+
+  selectedTemplatesWithFields.value.forEach(template => {
     const document = props.document || null;
     const filteredFields = template.additional_fields.filter(field =>
       checkAllConditions(field, document)
     );
 
-    return filteredFields.every(field =>
-      !field.required || additionalFieldValues.value[template.id]?.[field.id] !== undefined
-    );
+    filteredFields.forEach(field => {
+      if (fieldMap.has(field.name)) {
+        // Поле уже существует, обновляем информацию
+        const existingField = fieldMap.get(field.name)!;
+        existingField.templates.push(template.id);
+
+        // Если поле обязательное в любом шаблоне, делаем его обязательным
+        if (field.required) {
+          existingField.required = true;
+        }
+
+        // Объединяем опции для select полей
+        if (field.type === 'select' && field.options && existingField.type === 'select') {
+          const existingOptions = existingField.options || [];
+          const newOptions = field.options.filter(newOpt =>
+            !existingOptions.some(existingOpt => existingOpt.value === newOpt.value)
+          );
+          existingField.options = [...existingOptions, ...newOptions];
+        }
+
+        // Объединяем условия
+        if (field.conditions && field.conditions.length > 0) {
+          if (!existingField.conditions) {
+            existingField.conditions = [];
+          }
+          existingField.conditions.push(...field.conditions);
+        }
+      } else {
+        // Новое поле
+        fieldMap.set(field.name, {
+          id: `${field.name}_${template.id}`,
+          name: field.name,
+          type: field.type,
+          description: field.description,
+          required: field.required,
+          defaultValue: field.defaultValue,
+          options: field.type === 'select' ? field.options : undefined,
+          api_endpoint: field.type === 'api_select' ? field.api_endpoint : undefined,
+          optionLabelPath: field.type === 'api_select' ? field.optionLabelPath : undefined,
+          optionValuePath: field.type === 'api_select' ? field.optionValuePath : undefined,
+          resultsPath: field.type === 'api_select' ? field.resultsPath : undefined,
+          conditions: field.conditions,
+          templates: [template.id]
+        });
+      }
+    });
+  });
+
+  return Array.from(fieldMap.values());
+});
+
+// Проверка, все ли обязательные поля заполнены для всех выбранных шаблонов
+const isFormValid = computed(() => {
+  // Проверяем, что все обязательные объединенные поля заполнены
+  return mergedFields.value.every(field => {
+    return !field.required || additionalFieldValues.value[field.templates[0]]?.[field.id] !== undefined;
   });
 });
 
@@ -401,8 +472,18 @@ watch(() => props.isOpen, (isOpen) => {
     additionalFieldValues.value = {};
     showAdditionalFieldsDialog.value = false;
     apiData.value = {};
+    expandedGroups.value.clear();
   }
 });
+
+// Функция переключения состояния группы аккордеона
+const toggleGroup = (groupId: string) => {
+  if (expandedGroups.value.has(groupId)) {
+    expandedGroups.value.delete(groupId);
+  } else {
+    expandedGroups.value.add(groupId);
+  }
+};
 
 // Обработчик выбора действия
 const handleActionSelect = (action: 'report' | 'documents') => {
@@ -548,26 +629,49 @@ const handleGenerateDocuments = async () => {
       const template = allDocumentTemplates.value.find(t => t.id === templateId);
       if (!template) return null;
 
-      // Форматируем даты перед отправкой
-      const formattedFields = { ...additionalFieldValues.value[templateId] };
+      // Распределяем объединенные поля по шаблонам
+      const formattedFields: Record<string, any> = {};
 
-      if (template.additional_fields.length > 0) {
-        template.additional_fields.forEach(field => {
-          if (field.type === 'date' && formattedFields[field.id]) {
-            const dateParts = formattedFields[field.id].split('-');
-            if (dateParts.length === 3) {
-              formattedFields[field.id] = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
-            }
-          } else if (field.type === 'api_select' && formattedFields[field.id] !== undefined) {
-            // Преобразуем выбранный идентификатор в полный объект
-            const selected = formattedFields[field.id];
-            const fullObject = findApiItemByValue(field, selected);
-            if (fullObject !== undefined) {
-              formattedFields[field.id] = fullObject;
-            }
+      // Проходим по объединенным полям и распределяем их значения
+      mergedFields.value.forEach(mergedField => {
+        if (mergedField.templates.includes(templateId)) {
+          const fieldValue = additionalFieldValues.value[templateId]?.[mergedField.id];
+          if (fieldValue !== undefined) {
+            formattedFields[mergedField.name] = fieldValue;
           }
-        });
-      }
+        }
+      });
+
+      // Форматируем даты перед отправкой
+      Object.keys(formattedFields).forEach(fieldName => {
+        const mergedField = mergedFields.value.find(f => f.name === fieldName);
+        if (mergedField && mergedField.type === 'date' && formattedFields[fieldName]) {
+          const dateParts = formattedFields[fieldName].split('-');
+          if (dateParts.length === 3) {
+            formattedFields[fieldName] = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
+          }
+        } else if (mergedField && mergedField.type === 'api_select' && formattedFields[fieldName] !== undefined) {
+          // Преобразуем выбранный идентификатор в полный объект
+          const selected = formattedFields[fieldName];
+          const fieldForApi: AdditionalField = {
+            id: mergedField.id,
+            name: mergedField.name,
+            type: mergedField.type as "string" | "number" | "date" | "boolean" | "select" | "api_select",
+            description: mergedField.description,
+            required: mergedField.required,
+            defaultValue: mergedField.defaultValue,
+            api_endpoint: mergedField.api_endpoint,
+            optionLabelPath: mergedField.optionLabelPath,
+            optionValuePath: mergedField.optionValuePath,
+            resultsPath: mergedField.resultsPath,
+            conditions: mergedField.conditions
+          };
+          const fullObject = findApiItemByValue(fieldForApi, selected);
+          if (fullObject !== undefined) {
+            formattedFields[fieldName] = fullObject;
+          }
+        }
+      });
 
       // Объединяем данные документа с дополнительными полями и данными API
       const documentWithAdditionalFields: EnhancedDocumentData = {
@@ -690,25 +794,49 @@ const handleGenerateDocuments = async () => {
         <div class="py-4 space-y-6 max-h-[60vh] overflow-y-auto">
           <div v-for="group in documentGroups" :key="group.id" class="space-y-4">
             <div class="border-b pb-2">
-              <h3 class="text-lg font-semibold text-gray-900">{{ group.name }}</h3>
-              <p class="text-sm text-gray-600">{{ group.description }}</p>
+              <div
+                class="flex items-center justify-between cursor-pointer group"
+                @click="toggleGroup(group.id)">
+                <div class="flex-1">
+                  <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                    {{ group.name }}
+                  </h3>
+                  <p class="text-sm text-gray-600">{{ group.description }}</p>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                  <svg
+                    class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-all duration-200"
+                    :class="{ 'rotate-180': expandedGroups.has(group.id) }"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div class="space-y-3">
-              <div v-for="template in group.templates" :key="template.id"
-                class="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                <component :is="CustomCheckbox" :id="`template-${template.id}`"
-                  :checked="selectedTemplates.has(template.id)" @update:checked="handleTemplateToggle(template.id)"
-                  class="mt-1" @click="handleTemplateToggle(template.id)" />
-                <div class="flex-1">
-                  <component :is="CustomLabel" :for="`template-${template.id}`" class="font-medium cursor-pointer">
-                    {{ template.name }}
-                  </component>
-                  <p class="text-sm text-muted-foreground mt-1">{{ template.description }}</p>
-                  <div v-if="template.additional_fields.length > 0" class="mt-2">
-                    <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                      {{ template.additional_fields.length }} дополнительных полей
-                    </span>
+            <!-- Контент группы с анимацией -->
+            <div
+              class="transition-all duration-300 ease-in-out overflow-hidden"
+              :class="expandedGroups.has(group.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'"
+            >
+              <div class="space-y-3 pt-2">
+                <div v-for="template in group.templates" :key="template.id"
+                  class="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                  <component :is="CustomCheckbox" :id="`template-${template.id}`"
+                    :checked="selectedTemplates.has(template.id)" @update:checked="handleTemplateToggle(template.id)"
+                    class="mt-1" @click="handleTemplateToggle(template.id)" />
+                  <div class="flex-1">
+                    <component :is="CustomLabel" :for="`template-${template.id}`" class="font-medium cursor-pointer">
+                      {{ template.name }}
+                    </component>
+                    <p class="text-sm text-muted-foreground mt-1">{{ template.description }}</p>
+                    <div v-if="template.additional_fields.length > 0" class="mt-2">
+                      <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        {{ template.additional_fields.length }} дополнительных полей
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -744,20 +872,22 @@ const handleGenerateDocuments = async () => {
           </div>
 
           <div class="space-y-6">
+            <!-- Группировка объединенных полей по шаблонам для лучшего UX -->
             <div v-for="template in selectedTemplatesWithFields" :key="template.id" class="space-y-4">
               <div class="border-b pb-2">
                 <h4 class="font-medium">{{ template.name }}</h4>
                 <p class="text-sm text-muted-foreground">{{ template.description }}</p>
               </div>
 
-
               <div class="space-y-4">
-                <div v-for="field in template.additional_fields.filter(field =>
-                  checkAllConditions(field, document || null)
-                )" :key="`${template.id}-${field.id}`" class="space-y-2">
+                <div v-for="field in mergedFields.filter(field => field.templates.includes(template.id))"
+                  :key="`${template.id}-${field.id}`" class="space-y-2">
                   <component :is="CustomLabel" :for="`${template.id}-${field.id}`" class="block">
                     {{ field.name }}
                     <span v-if="field.required" class="text-destructive">*</span>
+                    <span v-if="field.templates.length > 1" class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded ml-2">
+                      Используется в {{ field.templates.length }} шаблонах
+                    </span>
                   </component>
 
                   <component v-if="field.type === 'string' || field.type === 'number'" :is="CustomInput"
@@ -787,14 +917,14 @@ const handleGenerateDocuments = async () => {
                       </component>
                     </component>
                   </component>
-                  
+
                   <component v-else-if="field.type === 'api_select'" :is="CustomSelect"
                     v-model="additionalFieldValues[template.id][field.id]" :required="field.required">
                     <component :is="CustomSelectTrigger" class="w-full">
                       <component :is="CustomSelectValue" :placeholder="field.description" />
                     </component>
                     <component :is="CustomSelectContent">
-                      <component v-for="option in buildApiSelectOptions(field)" :key="option.value" :is="CustomSelectItem"
+                      <component v-for="option in buildApiSelectOptions(field as AdditionalField)" :key="option.value" :is="CustomSelectItem"
                         :value="option.value">
                         {{ option.label }}
                       </component>
