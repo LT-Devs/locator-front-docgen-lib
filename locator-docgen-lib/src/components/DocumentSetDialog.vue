@@ -150,6 +150,7 @@ function checkCondition(condition: FieldCondition | undefined, document: Documen
         result = false;
       }
       break;
+      >
     case "!regex":
       if (typeof fieldValue === 'string' && typeof conditionValue === 'string') {
         try {

@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Импортируем accordion компоненты
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // Импортируем компоненты диалога
 import { Dialog } from "@/components/ui/dialog";
@@ -121,6 +123,11 @@ const CustomDialogHeader = computed(() => uiComponents.value.DialogHeader || Dia
 const CustomDialogFooter = computed(() => uiComponents.value.DialogFooter || DialogFooter);
 const CustomDialogTitle = computed(() => uiComponents.value.DialogTitle || DialogTitle);
 const CustomDialogDescription = computed(() => uiComponents.value.DialogDescription || DialogDescription);
+// Accordion компоненты для пользовательских UI
+const CustomAccordion = computed(() => uiComponents.value.Accordion || Accordion);
+const CustomAccordionContent = computed(() => uiComponents.value.AccordionContent || AccordionContent);
+const CustomAccordionItem = computed(() => uiComponents.value.AccordionItem || AccordionItem);
+const CustomAccordionTrigger = computed(() => uiComponents.value.AccordionTrigger || AccordionTrigger);
 
 // Состояние компонента
 const isGenerating = ref(false);
@@ -384,7 +391,7 @@ const selectedTemplatesWithFields = computed(() => {
 // Объединенные поля для выбранных шаблонов (группировка по имени поля)
 const mergedFields = computed(() => {
   const fieldMap = new Map<string, {
-    id: string;
+    id: string; // Оригинальный field.id для отправки в API
     name: string;
     type: string;
     description: string;
@@ -397,6 +404,7 @@ const mergedFields = computed(() => {
     resultsPath?: string;
     conditions?: any[];
     templates: string[]; // ID шаблонов, использующих это поле
+    fieldId: string; // ID для формы (field.name + template.id)
   }>();
 
   selectedTemplatesWithFields.value.forEach(template => {
@@ -436,7 +444,7 @@ const mergedFields = computed(() => {
       } else {
         // Новое поле
         fieldMap.set(field.name, {
-          id: `${field.name}_${template.id}`,
+          id: field.id, // Оригинальный field.id для API
           name: field.name,
           type: field.type,
           description: field.description,
@@ -448,7 +456,8 @@ const mergedFields = computed(() => {
           optionValuePath: field.type === 'api_select' ? field.optionValuePath : undefined,
           resultsPath: field.type === 'api_select' ? field.resultsPath : undefined,
           conditions: field.conditions,
-          templates: [template.id]
+          templates: [template.id],
+          fieldId: field.id
         });
       }
     });
@@ -485,15 +494,6 @@ watch(() => props.isOpen, (isOpen) => {
     expandedGroups.value.clear();
   }
 });
-
-// Функция переключения состояния группы аккордеона
-const toggleGroup = (groupId: string) => {
-  if (expandedGroups.value.has(groupId)) {
-    expandedGroups.value.delete(groupId);
-  } else {
-    expandedGroups.value.add(groupId);
-  }
-};
 
 // Обработчик выбора действия
 const handleActionSelect = (action: 'report' | 'documents') => {
@@ -662,16 +662,16 @@ const handleGenerateDocuments = async () => {
       });
 
       // Форматируем даты перед отправкой
-      Object.keys(formattedFields).forEach(fieldName => {
-        const mergedField = mergedFields.value.find(f => f.name === fieldName);
-        if (mergedField && mergedField.type === 'date' && formattedFields[fieldName]) {
-          const dateParts = formattedFields[fieldName].split('-');
+      Object.keys(formattedFields).forEach(fieldId => {
+        const mergedField = mergedFields.value.find(f => f.id === fieldId);
+        if (mergedField && mergedField.type === 'date' && formattedFields[fieldId]) {
+          const dateParts = formattedFields[fieldId].split('-');
           if (dateParts.length === 3) {
-            formattedFields[fieldName] = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
+            formattedFields[fieldId] = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
           }
-        } else if (mergedField && mergedField.type === 'api_select' && formattedFields[fieldName] !== undefined) {
+        } else if (mergedField && mergedField.type === 'api_select' && formattedFields[fieldId] !== undefined) {
           // Преобразуем выбранный идентификатор в полный объект
-          const selected = formattedFields[fieldName];
+          const selected = formattedFields[fieldId];
           const fieldForApi: AdditionalField = {
             id: mergedField.id,
             name: mergedField.name,
@@ -687,7 +687,7 @@ const handleGenerateDocuments = async () => {
           };
           const fullObject = findApiItemByValue(fieldForApi, selected);
           if (fullObject !== undefined) {
-            formattedFields[fieldName] = fullObject;
+            formattedFields[fieldId] = fullObject;
           }
         }
       });
@@ -811,56 +811,43 @@ const handleGenerateDocuments = async () => {
         </component>
 
         <div class="py-4 space-y-6 max-h-[60vh] overflow-y-auto">
-          <div v-for="group in documentGroups" :key="group.id" class="space-y-4">
-            <div class="border-b pb-2">
-              <div
-                class="flex items-center justify-between cursor-pointer group"
-                @click="toggleGroup(group.id)">
-                <div class="flex-1">
-                  <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                    {{ group.name }}
-                  </h3>
-                  <p class="text-sm text-gray-600">{{ group.description }}</p>
-                </div>
-                <div class="ml-4 flex-shrink-0">
-                  <svg
-                    class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-all duration-200"
-                    :class="{ 'rotate-180': expandedGroups.has(group.id) }"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <!-- Контент группы с анимацией -->
-            <div
-              class="transition-all duration-300 ease-in-out overflow-hidden"
-              :class="expandedGroups.has(group.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'"
-            >
-              <div class="space-y-3 pt-2">
-                <div v-for="template in group.templates" :key="template.id"
-                  class="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <component :is="CustomCheckbox" :id="`template-${template.id}`"
-                    :checked="selectedTemplates.has(template.id)" @update:checked="handleTemplateToggle(template.id)"
-                    class="mt-1" @click="handleTemplateToggle(template.id)" />
+          <!-- Альтернативный интерфейс с использованием shadcn accordion -->
+          <component :is="CustomAccordion" type="multiple" class="space-y-4">
+            <component v-for="group in documentGroups" :key="group.id" :is="CustomAccordionItem" :value="group.id">
+              <component :is="CustomAccordionTrigger" class="text-left">
+                <div class="flex items-center justify-between w-full">
                   <div class="flex-1">
-                    <component :is="CustomLabel" :for="`template-${template.id}`" class="font-medium cursor-pointer">
-                      {{ template.name }}
-                    </component>
-                    <p class="text-sm text-muted-foreground mt-1">{{ template.description }}</p>
-                    <div v-if="template.additional_fields.length > 0" class="mt-2">
-                      <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                        {{ template.additional_fields.length }} дополнительных полей
-                      </span>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ group.name }}</h3>
+                    <p class="text-sm text-gray-600">{{ group.description }}</p>
+                  </div>
+                  <div class="ml-4 text-sm text-muted-foreground">
+                    {{ group.templates?.length || 0 }} шаблонов
+                  </div>
+                </div>
+              </component>
+              <component :is="CustomAccordionContent">
+                <div class="space-y-3 pt-2">
+                  <div v-for="template in group.templates" :key="template.id"
+                    class="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <component :is="CustomCheckbox" :id="`template-${template.id}`"
+                      :checked="selectedTemplates.has(template.id)" @update:checked="handleTemplateToggle(template.id)"
+                      class="mt-1" @click="handleTemplateToggle(template.id)" />
+                    <div class="flex-1">
+                      <component :is="CustomLabel" :for="`template-${template.id}`" class="font-medium cursor-pointer">
+                        {{ template.name }}
+                      </component>
+                      <p class="text-sm text-muted-foreground mt-1">{{ template.description }}</p>
+                      <div v-if="template.additional_fields.length > 0" class="mt-2">
+                        <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                          {{ template.additional_fields.length }} дополнительных полей
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
+              </component>
+            </component>
+          </component>
         </div>
 
         <component :is="CustomDialogFooter">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import _ from "lodash";
-import axios from "axios";
+import axiosInstance from "axios";
 import { getConfig, useConfig } from "@/config";
 import { documentApi } from "@/api/documentApi";
 import type { DocumentData } from "@/types/document_data";
@@ -305,16 +305,16 @@ async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData
 
       switch (endpoint.method) {
         case 'GET':
-          response = await axios.get(processedUrl, requestConfig);
+          response = await axiosInstance.get(processedUrl, requestConfig);
           break;
         case 'POST':
-          response = await axios.post(processedUrl, endpoint.body, requestConfig);
+          response = await axiosInstance.post(processedUrl, endpoint.body, requestConfig);
           break;
         case 'PUT':
-          response = await axios.put(processedUrl, endpoint.body, requestConfig);
+          response = await axiosInstance.put(processedUrl, endpoint.body, requestConfig);
           break;
         case 'DELETE':
-          response = await axios.delete(processedUrl, requestConfig);
+          response = await axiosInstance.delete(processedUrl, requestConfig);
           break;
       }
 
