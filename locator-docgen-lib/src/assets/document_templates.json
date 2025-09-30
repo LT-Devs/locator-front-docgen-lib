@@ -1,176 +1,535 @@
 [
   {
-    "id": "example_1",
-    "name": "Скачать отчет",
-    "description": "Скачать готовый отчет по документу",
+    "id": "report_tpl",
+    "name": "Скачать рапорт",
+    "description": "Скачать рапорт о ВУД в формате .docx",
     "api_endpoints": [
       {
-        "id": "report_data",
-        "url": "{config.backendUrl}/reports/generate",
-        "method": "POST",
-        "body": {
-          "document_id": "{{ document.ref_id }}"
+        "id": "department",
+        "url": "http://locator.local/api/v1/department",
+        "method": "GET",
+        "params": {
+          "path": "__DEPARTMENT_PATH__"
         }
+      },
+      {
+        "id": "department_your",
+        "url": "http://locator.local/api/v1/department",
+        "method": "GET"
       }
     ],
     "additional_fields": []
   },
   {
-    "id": "example_2",
-    "name": "Экспорт данных",
-    "description": "Экспортировать данные в Excel",
-    "api_endpoints": [],
-    "additional_fields": [
-      {
-        "id": "export_format",
-        "name": "Формат экспорта",
-        "type": "select",
-        "description": "Выберите формат экспорта",
-        "required": true,
-        "defaultValue": "excel",
-        "options": [
-          { "value": "excel", "label": "Excel (.xlsx)" },
-          { "value": "csv", "label": "CSV" },
-          { "value": "pdf", "label": "PDF" }
-        ]
-      }
-    ]
-  },
-  {
-    "id": "group_1",
-    "name": "Основные документы",
-    "description": "Основные документы для подачи заявки",
+    "id": "vud_complect",
+    "name": "Комплект ВУД",
+    "description": "Генерируется комплект для ВУД",
     "templates": [
       {
-        "id": "template_1",
-        "name": "Сопроводительное",
-        "description": "Стандартный шаблон сопроводительного письма",
+        "id": "VUD_1",
+        "name": "Поставновление о ВУД",
+        "description": "Генерация постановления о ВУД",
         "api_endpoints": [
           {
-            "id": "staff_info",
-            "url": "{config.staffUrl}/staff/summary?position=руководитель отдела&name_by_select={{ document.metadata.decision_description }}",
+            "id": "static_organization",
+            "url": "http://addr.locator.local/api/v1/addr/department_addresses/",
+            "method": "GET"
+          },
+          {
+            "id": "department",
+            "url": "http://locator.local/api/v1/department",
+            "method": "GET"
+          },
+          {
+            "id": "krsp",
+            "url": "http://krsp.locator.local/api/v1/krsp/get-parameters-for-generator?krsp_number={{ document.bcmr_number }}&krsp_year={{ document.bcmr_date[0] }}{{ document.bcmr_date[1] }}{{ document.bcmr_date[2] }}{{ document.bcmr_date[3] }}",
+            "method": "GET"
+          }
+        ],
+        "additional_fields": []
+      },
+      {
+        "id": "accept_vud",
+        "name": "Поставновление о принятии УД",
+        "description": "Генерация постановления о принятии УД",
+        "api_endpoints": [
+          {
+            "id": "static_organization",
+            "url": "http://addr.locator.local/api/v1/addr/department_addresses/",
+            "method": "GET"
+          },
+          {
+            "id": "department",
+            "url": "http://locator.local/api/v1/department",
+            "method": "GET"
+          }
+        ],
+        "additional_fields": []
+      },
+      {
+        "id": "static_card_f_1",
+        "name": "Стат. карточка Ф-1",
+        "description": "Генерация стат. карточки Ф-1",
+        "api_endpoints": [
+          {
+            "id": "static_organization",
+            "url": "http://addr.locator.local/api/v1/addr/department_addresses/",
+            "method": "GET"
+          },
+          {
+            "id": "krsp",
+            "url": "http://krsp.locator.local/api/v1/krsp/get-parameters-for-generator?krsp_number={{ document.bcmr_number }}&krsp_year={{ document.bcmr_date[0] }}{{ document.bcmr_date[1] }}{{ document.bcmr_date[2] }}{{ document.bcmr_date[3] }}",
             "method": "GET"
           }
         ],
         "additional_fields": [
           {
-            "id": "document_date",
-            "name": "Дата документа",
-            "type": "date",
-            "description": "Дата составления документа",
+            "id": "vud_born",
+            "name": "Поводы для ВУД/ОВУД",
+            "type": "select",
+            "description": "Поводы для возбуждения (отказа в возбуждении) уголовного дела",
             "required": true,
             "defaultValue": null,
-            "conditions": [
+            "options": [
+              { "value": "1", "label": "заявление" },
+              { "value": "2", "label": "явка с повинной" },
+              { "value": "5", "label": "иное сообщение" },
+              { "value": "4", "label": "по иным материалам" },
               {
-                "logic": "AND",
-                "conditions": [
-                  {
-                    "field": "metadata.sender",
-                    "operator": "!=",
-                    "value": "напрямую"
-                  },
-                  {
-                    "field": "metadata.sender",
-                    "operator": "!regex",
-                    "value": "^[А-ЯЁ][а-яё]+\\s+[А-ЯЁ]\\.[А-ЯЁ]\\."
-                  }
-                ]
+                "value": "3",
+                "label": "Постановление прокурора: по материалам прокурорской проверки"
+              }
+            ]
+          },
+          {
+            "id": "kem_vud",
+            "name": "Кем ВУД",
+            "type": "select",
+            "description": "Кем уголовное дело возбуждено",
+            "required": true,
+            "defaultValue": null,
+            "options": [
+              { "value": "03", "label": "следователем (руководителем) ВСО" },
+              {
+                "value": "12",
+                "label": "следователем (руководителем) территориального СО СК РФ"
+              },
+              { "value": "20", "label": "следователем (руководителем) ОВД" },
+              { "value": "32", "label": "следователем (руководителем) ФСКН" },
+              { "value": "40", "label": "следователем (руководителем) ФСБ" },
+              {
+                "value": "09",
+                "label": "следователем при отмене ОВУД по указ. руководителя ВСО"
+              },
+              {
+                "value": "02",
+                "label": "следователем при отмене ОВУД по пост. прокурора"
+              },
+              { "value": "04", "label": "командиром части" },
+              { "value": "63", "label": "военной полицией" },
+              { "value": "21", "label": "дознавателем ОВД" },
+              { "value": "33", "label": "дознавателем ФСКН" },
+              { "value": "35", "label": "дознавателем таможни" },
+              { "value": "41", "label": "дознавателем ФСБ" },
+              { "value": "51", "label": "дознавателем ФСИН" },
+              { "value": "50", "label": "дознавателем ФССП" },
+              { "value": "55", "label": "дознавателем противопожарной службы" },
+              { "value": "05", "label": "судом" },
+              { "value": "06", "label": "другим органом" },
+              {
+                "value": "08",
+                "label": "правоохранительным органом иностранного государства"
+              }
+            ]
+          },
+          {
+            "id": "form_preliminary",
+            "name": "Форма предварительного расследования",
+            "type": "select",
+            "description": "Форма предварительного расследования",
+            "required": true,
+            "defaultValue": null,
+            "options": [
+              { "value": "1", "label": "предварительное следствие" },
+              { "value": "2", "label": "дознание" },
+              { "value": "3", "label": "сокращенная форма дознания" }
+            ]
+          },
+          {
+            "id": "motive_crime",
+            "name": "Мотив преступления",
+            "type": "select",
+            "description": "Мотив преступления",
+            "required": true,
+            "defaultValue": null,
+            "options": [
+              { "value": "01", "label": "корыстные побуждения" },
+              {
+                "value": "02",
+                "label": "с целью сокрытия другого преступления"
+              },
+              { "value": "03", "label": "хулиганские побуждения" },
+              {
+                "value": "04",
+                "label": "ревность, ссора, личная неприязнь и иные бытовые причины"
+              },
+              { "value": "05", "label": "месть" },
+              { "value": "06", "label": "межнациональные (расовые) отношения" },
+              { "value": "07", "label": "религиозные отношения" },
+              { "value": "36", "label": "социальные отношения" },
+              {
+                "value": "37",
+                "label": "идеологические (политические) отношения"
+              },
+              { "value": "08", "label": "приобретение наркотиков" },
+              {
+                "value": "09",
+                "label": "приобретение сильнодействующих веществ"
+              },
+              { "value": "10", "label": "приобретение спиртных напитков" },
+              { "value": "11", "label": "завладение оружием" },
+              { "value": "12", "label": "сексуальные побуждения" },
+              {
+                "value": "13",
+                "label": "избежать ответственности за совершение другого преступления"
+              },
+              {
+                "value": "14",
+                "label": "недовольство требовательностью командира"
+              },
+              { "value": "15", "label": "ложно понятые интересы службы" },
+              { "value": "16", "label": "карьеристские побуждения" },
+              { "value": "18", "label": "нежелание служить, в т.ч. временно" },
+              {
+                "value": "20",
+                "label": "уклонение от военной службы из-за «неуставных» отношений"
+              },
+              { "value": "00", "label": "неосторожная вина" }
+            ]
+          },
+          {
+            "id": "dislokaciya_chasti",
+            "name": "Дислокация части",
+            "type": "select",
+            "description": "При самовольном оставлении обязательно указывать место дислокации части, а не место, куда лицо убыло",
+            "required": true,
+            "defaultValue": null,
+            "options": [
+              { "value": "1", "label": "на территории других государств" },
+              { "value": "2", "label": "на территории России: столица РФ" },
+              {
+                "value": "7",
+                "label": "на территории России: республиканский центр"
+              },
+              {
+                "value": "3",
+                "label": "на территории России: краевой или областной центр"
+              },
+              {
+                "value": "4",
+                "label": "на территории России: городское поселение"
+              },
+              {
+                "value": "5",
+                "label": "на территории России: сельское поселение"
+              },
+              {
+                "value": "6",
+                "label": "на территории России: вне населенного пункта"
               }
             ]
           }
         ]
       },
       {
-        "id": "template_2",
-        "name": "Автобиография",
-        "description": "Шаблон автобиографии",
-        "api_endpoints": [],
-        "additional_fields": [
+        "id": "static_card_f_1_2",
+        "name": "Стат. карточка Ф-1.2",
+        "description": "Генерация стат. карточки Ф-1.2",
+        "api_endpoints": [
           {
-            "id": "birth_date",
-            "name": "Дата рождения",
-            "type": "date",
-            "description": "Дата рождения заявителя",
-            "required": true,
-            "defaultValue": null
-          },
-          {
-            "id": "education",
-            "name": "Образование",
-            "type": "select",
-            "description": "Уровень образования",
-            "required": false,
-            "defaultValue": "higher",
-            "options": [
-              { "value": "secondary", "label": "Среднее" },
-              { "value": "vocational", "label": "Среднее специальное" },
-              { "value": "higher", "label": "Высшее" },
-              { "value": "postgraduate", "label": "Послевузовское" }
-            ]
+            "id": "static_organization",
+            "url": "http://addr.locator.local/api/v1/addr/department_addresses/",
+            "method": "GET"
           }
-        ]
-      }
-    ]
-  },
-  {
-    "id": "group_2",
-    "name": "Дополнительные документы",
-    "description": "Дополнительные документы по требованию",
-    "templates": [
-      {
-        "id": "template_3",
-        "name": "Заявление",
-        "description": "Шаблон заявления",
-        "api_endpoints": [],
+        ],
         "additional_fields": [
           {
-            "id": "spravka_type",
-            "name": "Тип справки",
+            "id": "sostoyanie",
+            "name": "Состояние",
             "type": "select",
-            "description": "Тип запрашиваемой справки",
+            "description": "Состояние лица при совершении преступления",
             "required": true,
             "defaultValue": null,
             "options": [
-              { "value": "salary", "label": "О заработной плате" },
-              { "value": "employment", "label": "О трудовой деятельности" },
-              { "value": "income", "label": "О доходах" },
-              { "value": "family", "label": "О составе семьи" },
-              { "value": "medical", "label": "Медицинская справка" }
+              { "value": "  ", "label": "нет" },
+              { "value": "05", "label": "алкогольное опьянение" },
+              { "value": "07", "label": "наркотическое опьянение" },
+              { "value": "08", "label": "токсическое опьянение" },
+              { "value": "09", "label": "абстиненция" },
+              { "value": "10", "label": "аффект" },
+              { "value": "11", "label": "психическое расстройство" },
+              { "value": "12", "label": "иное болезненное состояние" }
             ]
+          },
+          {
+            "id": "date_arrest",
+            "name": "Дата задержания",
+            "type": "date",
+            "description": "Дата задержания",
+            "required": false,
+            "defaultValue": null
           }
         ]
       },
       {
-        "id": "template_4",
-        "name": "Справка",
-        "description": "Шаблон справки",
-        "api_endpoints": [],
-        "additional_fields": [
+        "id": "soprovod_vp",
+        "name": "Сопровод в ВП о ВУД",
+        "description": "Генерация сопровод в ВП о ВУД",
+        "api_endpoints": [
           {
-            "id": "spravka_type",
-            "name": "Тип справки",
-            "type": "select",
-            "description": "Тип запрашиваемой справки",
-            "required": true,
-            "defaultValue": null,
-            "options": [
-              { "value": "salary", "label": "О заработной плате" },
-              { "value": "employment", "label": "О трудовой деятельности" },
-              { "value": "income", "label": "О доходах" },
-              { "value": "family", "label": "О составе семьи" },
-              { "value": "medical", "label": "Медицинская справка" }
-            ]
+            "id": "department",
+            "url": "http://locator.local/api/v1/department",
+            "method": "GET"
           },
           {
-            "id": "validity_period",
-            "name": "Срок действия",
-            "type": "number",
-            "description": "Срок действия справки в днях",
+            "id": "static_organization",
+            "url": "http://addr.locator.local/api/v1/addr/department_addresses/",
+            "method": "GET"
+          }
+        ],
+        "additional_fields": []
+      },
+      {
+        "id": "notification_control_military",
+        "name": "Уведомление ком. в/ч о ВУД",
+        "description": "Генерация уведомления ком. в/ч о ВУД",
+        "api_endpoints": [
+          {
+            "id": "department",
+            "url": "http://locator.local/api/v1/department",
+            "method": "GET"
+          }
+        ],
+        "additional_fields": []
+      },
+      {
+        "id": "notification_crime_face",
+        "name": "Уведомление обвиняемого о ВУД",
+        "description": "Генерация уведомления обвиняемого о ВУД",
+        "api_endpoints": [
+          {
+            "id": "department",
+            "url": "http://locator.local/api/v1/department",
+            "method": "GET"
+          }
+        ],
+        "additional_fields": []
+      }
+    ]
+  },
+  {
+    "id": "zapros",
+    "name": "Запросы",
+    "description": "Генерация запросов по УД",
+    "templates": [
+      {
+        "id": "crb_medical_help",
+        "name": "ЦРБ оказание медпомощи",
+        "description": "Создание запроса в ЦРБ",
+        "api_endpoints": [
+          {
+            "id": "addr_list",
+            "url": "http://addr.locator.local/api/v1/addr/user_defined_filtered/",
+            "method": "GET",
+            "params": {
+              "contact_category": "Мед. учреждения"
+            }
+          },
+          {
+            "id": "department",
+            "url": "http://locator.local/api/v1/department",
+            "method": "GET"
+          }
+        ],
+        "additional_fields": [
+          {
+            "id": "face",
+            "name": "Лицо",
+            "type": "select",
+            "description": "Выберите лицо",
+            "required": true,
+            "defaultValue": null,
+            "options": "__DYNAMIC_FACES__"
+          },
+          {
+            "id": "org_crb",
+            "name": "В какую организацию направить (ЦРБ)",
+            "type": "api_select",
+            "description": "Выберите организацию",
+            "required": true,
+            "defaultValue": null,
+
+            "api_endpoint": "addr_list",
+            "optionLabelPath": "organization",
+            "optionValuePath": "id"
+          },
+          {
+            "id": "date_start",
+            "name": "С какого числа представить информацию по обращениям за медицинской помощью",
+            "type": "date",
+            "description": "С какого периода",
             "required": false,
-            "defaultValue": 30
+            "defaultValue": null
+          },
+          {
+            "id": "control_date",
+            "name": "Ответ на запрос направить до",
+            "type": "date",
+            "description": "Срок",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "seria_pasport",
+            "name": "Серия паспорта",
+            "type": "string",
+            "description": "Введите серию паспорта",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "number_pasport",
+            "name": "Номер паспорта",
+            "type": "string",
+            "description": "Введите номер паспорта",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "hwo_create_pasport",
+            "name": "Кем выдан паспорт",
+            "type": "string",
+            "description": "Кем ввыдан",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "where_create_pasport",
+            "name": "Когда выдан паспорт",
+            "type": "date",
+            "description": "Когда выдан",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "email",
+            "name": "На какую электронную почту направить ответ",
+            "type": "string",
+            "description": "Электронная почта",
+            "required": false,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "id": "ivs",
+        "name": "ИВС",
+        "description": "Создание запроса ИВС",
+        "api_endpoints": [
+          {
+            "id": "addr_list",
+            "url": "http://addr.locator.local/api/v1/addr/user_defined_filtered/",
+            "method": "GET",
+            "params": {
+              "contact_category": "Другие"
+            }
+          },
+          {
+            "id": "department",
+            "url": "http://locator.local/api/v1/department",
+            "method": "GET"
+          }
+        ],
+        "additional_fields": [
+          {
+            "id": "face",
+            "name": "Лицо",
+            "type": "select",
+            "description": "Выберите лицо",
+            "required": true,
+            "defaultValue": null,
+            "options": "__DYNAMIC_FACES__"
+          },
+          {
+            "id": "org_ivs",
+            "name": "В какую организацию направить (ИВС)",
+            "type": "api_select",
+            "description": "Выберите организацию",
+            "required": true,
+            "defaultValue": null,
+
+            "api_endpoint": "addr_list",
+            "optionLabelPath": "organization",
+            "optionValuePath": "id"
+          },
+          {
+            "id": "date_start",
+            "name": "С какого числа представить информацию по обращениям за медицинской помощью",
+            "type": "date",
+            "description": "С какого периода",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "control_date",
+            "name": "Ответ на запрос направить до",
+            "type": "date",
+            "description": "Срок",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "seria_pasport",
+            "name": "Серия паспорта",
+            "type": "string",
+            "description": "Введите серию паспорта",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "number_pasport",
+            "name": "Номер паспорта",
+            "type": "string",
+            "description": "Введите номер паспорта",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "hwo_create_pasport",
+            "name": "Кем выдан паспорт",
+            "type": "string",
+            "description": "Кем ввыдан",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "where_create_pasport",
+            "name": "Когда выдан паспорт",
+            "type": "date",
+            "description": "Когда выдан",
+            "required": false,
+            "defaultValue": null
+          },
+          {
+            "id": "email",
+            "name": "На какую электронную почту направить ответ",
+            "type": "string",
+            "description": "Электронная почта",
+            "required": false,
+            "defaultValue": null
           }
         ]
       }
     ]
   }
-] 
+]

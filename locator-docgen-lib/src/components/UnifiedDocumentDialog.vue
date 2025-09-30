@@ -419,7 +419,8 @@ const mergedFields = computed(() => {
         // Объединяем опции для select полей
         if (field.type === 'select' && field.options && existingField.type === 'select') {
           const existingOptions = existingField.options || [];
-          const newOptions = field.options.filter(newOpt =>
+          const optionsArray = Array.isArray(field.options) ? field.options : [];
+          const newOptions = optionsArray.filter(newOpt =>
             !existingOptions.some(existingOpt => existingOpt.value === newOpt.value)
           );
           existingField.options = [...existingOptions, ...newOptions];
@@ -454,6 +455,15 @@ const mergedFields = computed(() => {
   });
 
   return Array.from(fieldMap.values());
+});
+
+// Разделяем поля на общие (используются в нескольких шаблонах) и уникальные (используются в одном шаблоне)
+const commonFields = computed(() => {
+  return mergedFields.value.filter(field => field.templates.length > 1);
+});
+
+const uniqueFields = computed(() => {
+  return mergedFields.value.filter(field => field.templates.length === 1);
 });
 
 // Проверка, все ли обязательные поля заполнены для всех выбранных шаблонов
@@ -635,9 +645,18 @@ const handleGenerateDocuments = async () => {
       // Проходим по объединенным полям и распределяем их значения
       mergedFields.value.forEach(mergedField => {
         if (mergedField.templates.includes(templateId)) {
-          const fieldValue = additionalFieldValues.value[templateId]?.[mergedField.id];
+          let fieldValue;
+
+          if (mergedField.templates.length > 1) {
+            // Для общих полей берем значение из первого шаблона
+            fieldValue = additionalFieldValues.value[mergedField.templates[0]]?.[mergedField.id];
+          } else {
+            // Для уникальных полей берем значение из текущего шаблона
+            fieldValue = additionalFieldValues.value[templateId]?.[mergedField.id];
+          }
+
           if (fieldValue !== undefined) {
-            formattedFields[mergedField.name] = fieldValue;
+            formattedFields[mergedField.id] = fieldValue;
           }
         }
       });
@@ -872,22 +891,81 @@ const handleGenerateDocuments = async () => {
           </div>
 
           <div class="space-y-6">
-            <!-- Группировка объединенных полей по шаблонам для лучшего UX -->
-            <div v-for="template in selectedTemplatesWithFields" :key="template.id" class="space-y-4">
+            <!-- Общие поля (используются в нескольких шаблонах) -->
+            <div v-if="commonFields.length > 0" class="space-y-4">
               <div class="border-b pb-2">
+                <h4 class="font-medium text-blue-700">Общие поля</h4>
+                <p class="text-sm text-muted-foreground">Поля, используемые в нескольких шаблонах</p>
+              </div>
+
+              <div class="space-y-4">
+                <div v-for="field in commonFields" :key="`common-${field.id}`" class="space-y-2">
+                  <component :is="CustomLabel" :for="`common-${field.id}`" class="block">
+                    {{ field.name }}
+                    <span v-if="field.required" class="text-destructive">*</span>
+                    <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded ml-2">
+                      Используется в {{ field.templates.length }} шаблонах
+                    </span>
+                  </component>
+
+                  <component v-if="field.type === 'string' || field.type === 'number'" :is="CustomInput"
+                    :id="`common-${field.id}`" :type="field.type === 'number' ? 'number' : 'text'"
+                    :placeholder="field.description" v-model="additionalFieldValues[field.templates[0]][field.id]"
+                    :required="field.required" class="w-full" />
+
+                  <component v-else-if="field.type === 'date'" :is="CustomInput" :id="`common-${field.id}`"
+                    type="date" :placeholder="field.description" v-model="additionalFieldValues[field.templates[0]][field.id]"
+                    :required="field.required" class="w-full" />
+
+                  <div v-else-if="field.type === 'boolean'" class="flex items-center space-x-2">
+                    <component :is="CustomCheckbox" :id="`common-${field.id}`"
+                      v-model="additionalFieldValues[field.templates[0]][field.id]" :required="field.required" />
+                    <component :is="CustomLabel" :for="`common-${field.id}`">{{ field.description }}</component>
+                  </div>
+
+                  <component v-else-if="field.type === 'select'" :is="CustomSelect"
+                    v-model="additionalFieldValues[field.templates[0]][field.id]" :required="field.required">
+                    <component :is="CustomSelectTrigger" class="w-full">
+                      <component :is="CustomSelectValue" :placeholder="field.description" />
+                    </component>
+                    <component :is="CustomSelectContent">
+                      <component v-for="option in field.options" :key="option.value" :is="CustomSelectItem"
+                        :value="option.value" :disabled="option.disabled">
+                        {{ option.label }}
+                      </component>
+                    </component>
+                  </component>
+
+                  <component v-else-if="field.type === 'api_select'" :is="CustomSelect"
+                    v-model="additionalFieldValues[field.templates[0]][field.id]" :required="field.required">
+                    <component :is="CustomSelectTrigger" class="w-full">
+                      <component :is="CustomSelectValue" :placeholder="field.description" />
+                    </component>
+                    <component :is="CustomSelectContent">
+                      <component v-for="option in buildApiSelectOptions(field as AdditionalField)" :key="option.value" :is="CustomSelectItem"
+                        :value="option.value">
+                        {{ option.label }}
+                      </component>
+                    </component>
+                  </component>
+                </div>
+              </div>
+            </div>
+
+            <!-- Уникальные поля для каждого шаблона -->
+            <div v-for="template in selectedTemplatesWithFields" :key="template.id" class="space-y-4">
+              <!-- Показываем заголовок шаблона только если есть уникальные поля -->
+              <div v-if="uniqueFields.some(field => field.templates.includes(template.id))" class="border-b pb-2">
                 <h4 class="font-medium">{{ template.name }}</h4>
                 <p class="text-sm text-muted-foreground">{{ template.description }}</p>
               </div>
 
               <div class="space-y-4">
-                <div v-for="field in mergedFields.filter(field => field.templates.includes(template.id))"
+                <div v-for="field in uniqueFields.filter(field => field.templates.includes(template.id))"
                   :key="`${template.id}-${field.id}`" class="space-y-2">
                   <component :is="CustomLabel" :for="`${template.id}-${field.id}`" class="block">
                     {{ field.name }}
                     <span v-if="field.required" class="text-destructive">*</span>
-                    <span v-if="field.templates.length > 1" class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded ml-2">
-                      Используется в {{ field.templates.length }} шаблонах
-                    </span>
                   </component>
 
                   <component v-if="field.type === 'string' || field.type === 'number'" :is="CustomInput"
@@ -930,7 +1008,6 @@ const handleGenerateDocuments = async () => {
                       </component>
                     </component>
                   </component>
-
                 </div>
               </div>
             </div>
