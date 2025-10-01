@@ -22,7 +22,8 @@ export interface EnhancedDocumentData extends DocumentData {
 
 export interface DocumentApiOptions {
     filename: string | undefined | null;
-    onSuccess?: (message: string) => void;
+    needDownload?: boolean;
+    onSuccess?: (data: string | Blob) => void;
     onError?: (message: string) => void;
 }
 

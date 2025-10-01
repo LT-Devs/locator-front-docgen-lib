@@ -16,7 +16,8 @@ export interface EnhancedDocumentData extends DocumentData {
 
 export interface DocumentApiOptions {
     filename: string | undefined | null;
-    onSuccess?: (message: string) => void;
+    needDownload?: boolean;
+    onSuccess?: (data: string | Blob) => void;
     onError?: (message: string) => void;
 }
 
@@ -46,24 +47,36 @@ function documentApiFunction(options?: DocumentApiOptions) {
                 { responseType: 'blob' }
             );
 
-            // Создаем blob и ссылку для скачивания
+            // Создаем blob
             const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            if (options?.filename == null) {
-                a.download = `Document_${data.ref_id ?? 'new'}_${templateName}.docx`;
-            }
-            else {
-                a.download = `${options.filename}.docx`;
-            }
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
 
-            if (options?.onSuccess) {
-                options.onSuccess('Документ успешно сгенерирован и загружен');
+            // Проверяем нужно ли скачивать файл автоматически
+            const needDownload = options?.needDownload !== false; // По умолчанию true
+
+            if (needDownload) {
+                // Создаем blob и ссылку для скачивания
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                if (options?.filename == null) {
+                    a.download = `Document_${data.ref_id ?? 'new'}_${templateName}.docx`;
+                }
+                else {
+                    a.download = `${options.filename}.docx`;
+                }
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+                if (options?.onSuccess) {
+                    options.onSuccess('Документ успешно сгенерирован и загружен');
+                }
+            } else {
+                // Возвращаем blob в коллбеке
+                if (options?.onSuccess) {
+                    options.onSuccess(blob);
+                }
             }
 
             return true;

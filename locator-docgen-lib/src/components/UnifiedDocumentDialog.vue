@@ -77,14 +77,14 @@ export interface DocumentTemplate {
 }
 
 export interface UnifiedDialogOptions {
-  filename: string | undefined | null;
-  onSuccess?: (message: string) => void;
-  onError?: (message: string) => void;
+   filename: string | undefined | null;
+   onSuccess?: (data: string | Blob) => void;
+   onError?: (message: string) => void;
 }
 
 const emit = defineEmits<{
   (e: "update:isOpen", value: boolean): void;
-  (e: "success", message: string): void;
+  (e: "success", message: string | Blob): void;
   (e: "error", message: string): void;
 }>();
 
@@ -98,7 +98,40 @@ const props = defineProps<{
 
 const { generateDocument, generateDocumentSet } = documentApi({
   filename: props.options?.filename,
-  onSuccess: (message) => emit('success', message),
+  onSuccess: (data) => {
+    if (typeof data === 'string') {
+      emit('success', data);
+    } else {
+      // Если получили Blob, создаем URL для скачивания
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+
+      // Определяем имя файла в зависимости от типа генерации
+      if (selectedAction.value === 'report') {
+        // Для отчета - единичный документ
+        const reportTemplate = reportTemplates.value[0];
+        a.download = `Document_${props.document?.ref_id ?? 'new'}_${reportTemplate?.id ?? 'template'}.docx`;
+      } else {
+        // Для документов - zip архив
+        const zipFilename = props.options?.filename ?
+          `${props.options.filename}_комплект.zip` :
+          `DocumentSet_${props.document?.ref_id ?? 'new'}_${new Date().toISOString().split('T')[0]}.zip`;
+        a.download = zipFilename;
+      }
+
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      if (selectedAction.value === 'report') {
+        emit('success', 'Отчет успешно сгенерирован и загружен');
+      } else {
+        emit('success', 'Комплект документов успешно сгенерирован и загружен');
+      }
+    }
+  },
   onError: (message) => emit('error', message)
 });
 

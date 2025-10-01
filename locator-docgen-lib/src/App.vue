@@ -22,9 +22,13 @@ const documentTemplates: DocumentTemplate[] = documentTemplatesData as DocumentT
 const isUnifiedDialogOpen = ref(false);
 
 // Обработчики событий
-const handleSuccess = (message: string) => {
+const handleSuccess = (message: string | Blob) => {
   console.log('Success:', message);
-  alert(message);
+  if (typeof message === 'string') {
+    alert(message);
+  } else {
+    alert('Документ успешно сгенерирован и загружен');
+  }
 };
 
 const handleError = (message: string) => {
