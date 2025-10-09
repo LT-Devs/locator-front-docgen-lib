@@ -88,9 +88,9 @@ export interface DocumentTemplate {
 }
 
 export interface UnifiedDialogOptions {
-    filename: string | undefined | null;
-    onSuccess?: (message: string) => void;
-    onError?: (message: string) => void;
+     filename: string | undefined | null;
+     onSuccess?: (data: string | Blob) => void;
+     onError?: (message: string) => void;
 }
 
 export const DocumentDialog: import('vue').DefineComponent<{}, {}, any>;
