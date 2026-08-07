@@ -79,14 +79,23 @@ const state = ref<State>({
 function dispatch(action: Action) {
   switch (action.type) {
     case actionTypes.ADD_TOAST:
-      state.value.toasts = [action.toast, ...state.value.toasts].slice(0, TOAST_LIMIT)
+      // @ts-ignore: Bypassing deep instantiation error
+      state.value.toasts = ([action.toast] as any[]).concat(state.value.toasts).slice(0, TOAST_LIMIT)
       break
 
-    case actionTypes.UPDATE_TOAST:
-      state.value.toasts = state.value.toasts.map(t =>
-        t.id === action.toast.id ? { ...t, ...action.toast } : t,
-      )
-      break
+    case actionTypes.UPDATE_TOAST: {
+      const arr: any[] = [];
+      for (let i = 0; i < state.value.toasts.length; i++) {
+        const t = state.value.toasts[i];
+        if (t.id === action.toast.id) {
+          arr.push(Object.assign({}, t, action.toast));
+        } else {
+          arr.push(t);
+        }
+      }
+      state.value.toasts = arr;
+      break;
+    }
 
     case actionTypes.DISMISS_TOAST: {
       const { toastId } = action
@@ -100,24 +109,34 @@ function dispatch(action: Action) {
         })
       }
 
-      state.value.toasts = state.value.toasts.map(t =>
-        t.id === toastId || toastId === undefined
-          ? {
-              ...t,
-              open: false,
-            }
-          : t,
-      )
+      const arr: any[] = [];
+      for (let i = 0; i < state.value.toasts.length; i++) {
+        const t = state.value.toasts[i];
+        if (t.id === toastId || toastId === undefined) {
+          arr.push(Object.assign({}, t, { open: false }));
+        } else {
+          arr.push(t);
+        }
+      }
+      state.value.toasts = arr;
       break
     }
 
-    case actionTypes.REMOVE_TOAST:
-      if (action.toastId === undefined)
+    case actionTypes.REMOVE_TOAST: {
+      if (action.toastId === undefined) {
         state.value.toasts = []
-      else
-        state.value.toasts = state.value.toasts.filter(t => t.id !== action.toastId)
-
+      } else {
+        const arr: any[] = [];
+        for (let i = 0; i < state.value.toasts.length; i++) {
+          const t = state.value.toasts[i];
+          if (t.id !== action.toastId) {
+            arr.push(t);
+          }
+        }
+        state.value.toasts = arr;
+      }
       break
+    }
   }
 }
 

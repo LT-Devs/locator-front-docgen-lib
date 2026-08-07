@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import _ from "lodash";
 import axiosInstance from "@/lib/axios";
 import { getConfig, useConfig } from "@/config";
 import { documentApi } from "@/api/documentApi";
@@ -69,6 +68,7 @@ export interface AdditionalField {
 
 export interface DocumentTemplate {
   id: string;
+  backend_id?: string;
   name: string;
   description: string;
   api_endpoints?: ApiEndpoint[];
@@ -165,6 +165,7 @@ const CustomAccordionTrigger = computed(() => uiComponents.value.AccordionTrigge
 // Состояние компонента
 const isGenerating = ref(false);
 const selectedAction = ref<'report' | 'documents' | null>(null);
+const selectedReportTemplateId = ref<string | null>(null);
 const selectedTemplates = ref<Set<string>>(new Set());
 const additionalFieldValues = ref<Record<string, Record<string, any>>>({});
 const showAdditionalFieldsDialog = ref(false);
@@ -195,9 +196,18 @@ const allDocumentTemplates = computed(() => {
   return templates;
 });
 
+// Получаем вообще все шаблоны (единичные отчеты + шаблоны из групп)
+const allTemplatesCombined = computed(() => {
+  return [...reportTemplates.value, ...allDocumentTemplates.value];
+});
+
 // Вспомогательные функции (копируем из DocumentDialog)
 function getValueByPath(obj: any, path: string): any {
-  return _.get(obj, path);
+  if (!obj || !path) return undefined;
+  return path
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .reduce((acc, part) => (acc != null ? acc[part] : undefined), obj);
 }
 
 function checkCondition(condition: FieldCondition | undefined, document: DocumentData | null): boolean {
@@ -299,7 +309,7 @@ function getCookie(name: string): string | null {
 
 function processTemplate(template: string, data: Record<string, any>): string {
   return template.replace(/\{\{\s*([^}]+)\s*\}\}/g, (match, path) => {
-    const value = _.get(data, path.trim());
+    const value = getValueByPath(data, path.trim());
     return value !== undefined ? String(value) : match;
   });
 }
@@ -310,7 +320,7 @@ function getApiItemsForField(field: AdditionalField): any[] {
   const raw = apiData.value[field.api_endpoint];
   if (!raw) return [];
   // Если указан resultsPath, извлекаем массив по нему, иначе ожидаем, что raw — это массив
-  const items = field.resultsPath ? _.get(raw, field.resultsPath) : raw;
+  const items = field.resultsPath ? getValueByPath(raw, field.resultsPath) : raw;
   return Array.isArray(items) ? items : [];
 }
 
@@ -320,8 +330,8 @@ function buildApiSelectOptions(field: AdditionalField): SelectOption[] {
   const labelPath = field.optionLabelPath || 'name';
   const valuePath = field.optionValuePath || 'id';
   return items.map((item) => ({
-    label: String(_.get(item, labelPath) ?? ''),
-    value: String(_.get(item, valuePath) ?? ''),
+    label: String(getValueByPath(item, labelPath) ?? ''),
+    value: String(getValueByPath(item, valuePath) ?? ''),
   })).filter(o => o.label !== '' && o.value !== '');
 }
 
@@ -329,7 +339,7 @@ function buildApiSelectOptions(field: AdditionalField): SelectOption[] {
 function findApiItemByValue(field: AdditionalField, selectedValue: string | number): any | undefined {
   const items = getApiItemsForField(field);
   const valuePath = field.optionValuePath || 'id';
-  return items.find(item => String(_.get(item, valuePath)) === String(selectedValue));
+  return items.find(item => String(getValueByPath(item, valuePath)) === String(selectedValue));
 }
 
 async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData): Promise<Record<string, any>> {
@@ -418,7 +428,7 @@ async function fetchApiData(endpoints: ApiEndpoint[], documentData: DocumentData
 
 // Выбранные шаблоны с их дополнительными полями
 const selectedTemplatesWithFields = computed(() => {
-  return allDocumentTemplates.value.filter(template => selectedTemplates.value.has(template.id));
+  return allTemplatesCombined.value.filter(template => selectedTemplates.value.has(template.id));
 });
 
 // Объединенные поля для выбранных шаблонов (группировка по имени поля)
@@ -520,6 +530,7 @@ const isFormValid = computed(() => {
 watch(() => props.isOpen, (isOpen) => {
   if (!isOpen) {
     selectedAction.value = null;
+    selectedReportTemplateId.value = null;
     selectedTemplates.value.clear();
     additionalFieldValues.value = {};
     showAdditionalFieldsDialog.value = false;
@@ -529,12 +540,30 @@ watch(() => props.isOpen, (isOpen) => {
 });
 
 // Обработчик выбора действия
-const handleActionSelect = (action: 'report' | 'documents') => {
+const handleActionSelect = (action: 'report' | 'documents', templateId?: string) => {
   selectedAction.value = action;
 
   if (action === 'report') {
-    // Для отчета сразу начинаем генерацию
-    handleGenerateReport();
+    const reportTemplate = templateId 
+      ? reportTemplates.value.find(t => t.id === templateId) || reportTemplates.value[0]
+      : reportTemplates.value[0];
+      
+    if (reportTemplate) {
+      selectedReportTemplateId.value = reportTemplate.id;
+    }
+
+    if (reportTemplate && (
+      (reportTemplate.additional_fields && reportTemplate.additional_fields.length > 0) || 
+      (reportTemplate.api_endpoints && reportTemplate.api_endpoints.length > 0)
+    )) {
+      if (!selectedTemplates.value.has(reportTemplate.id)) {
+        handleTemplateToggle(reportTemplate.id);
+      }
+      handleProceedToFields();
+    } else {
+      // Для отчета без доп. полей сразу начинаем генерацию
+      handleGenerateReport();
+    }
   }
 };
 
@@ -545,10 +574,10 @@ const handleTemplateToggle = (templateId: string) => {
     delete additionalFieldValues.value[templateId];
   } else {
     selectedTemplates.value.add(templateId);
-    const template = allDocumentTemplates.value.find(t => t.id === templateId);
+    const template = allTemplatesCombined.value.find(t => t.id === templateId);
     if (template) {
       additionalFieldValues.value[templateId] = {};
-      template.additional_fields.forEach(field => {
+      template.additional_fields?.forEach(field => {
         if (field.defaultValue !== null) {
           additionalFieldValues.value[templateId][field.id] = field.defaultValue;
         }
@@ -569,8 +598,11 @@ const handleGenerateReport = async () => {
   loadingText.value = 'Подготовка отчета...';
 
   try {
-    // Находим первый доступный единичный шаблон
-    const reportTemplate = reportTemplates.value[0];
+    // Находим выбранный единичный шаблон
+    const reportTemplate = selectedReportTemplateId.value 
+      ? reportTemplates.value.find(t => t.id === selectedReportTemplateId.value)
+      : reportTemplates.value[0];
+      
     if (!reportTemplate) {
       emit('error', 'Шаблон отчета не найден');
       return;
@@ -585,12 +617,12 @@ const handleGenerateReport = async () => {
     // Подготавливаем данные для генерации
     const documentWithAdditionalFields: EnhancedDocumentData = {
       ...props.document,
-      additional_fields: {},
+      additional_fields: additionalFieldValues.value[reportTemplate.id] || {},
       api_data: apiData.value
     };
 
     loadingText.value = 'Генерация отчета...';
-    await generateDocument(documentWithAdditionalFields, reportTemplate.id);
+    await generateDocument(documentWithAdditionalFields, reportTemplate.backend_id || reportTemplate.id);
 
     loadingText.value = 'Завершение...';
     emit("update:isOpen", false);
@@ -645,7 +677,11 @@ const handleProceedToFields = async () => {
   if (needsFields) {
     showAdditionalFieldsDialog.value = true;
   } else {
-    handleGenerateDocuments();
+    if (selectedAction.value === 'report') {
+      handleGenerateReport();
+    } else {
+      handleGenerateDocuments();
+    }
   }
 };
 
@@ -669,7 +705,7 @@ const handleGenerateDocuments = async () => {
     // Подготавливаем данные для всех выбранных документов
     loadingText.value = 'Подготовка данных...';
     const documents = Array.from(selectedTemplates.value).map((templateId) => {
-      const template = allDocumentTemplates.value.find(t => t.id === templateId);
+      const template = allTemplatesCombined.value.find(t => t.id === templateId);
       if (!template) return null;
 
       // Распределяем объединенные поля по шаблонам
@@ -725,7 +761,6 @@ const handleGenerateDocuments = async () => {
         }
       });
 
-      // Объединяем данные документа с дополнительными полями и данными API
       const documentWithAdditionalFields: EnhancedDocumentData = {
         ...props.document,
         additional_fields: formattedFields,
@@ -733,7 +768,7 @@ const handleGenerateDocuments = async () => {
       };
 
       return {
-        templateName: template.id,
+        templateName: template.backend_id || template.id,
         data: documentWithAdditionalFields
       };
     }).filter((doc): doc is { templateName: string; data: EnhancedDocumentData } => doc !== null);
@@ -782,7 +817,7 @@ const handleGenerateDocuments = async () => {
           <!-- Единичные шаблоны (отчеты) -->
           <div v-for="template in reportTemplates" :key="template.id"
             class="flex items-center justify-between p-6 border-2 border-dashed border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer"
-            @click="handleActionSelect('report')">
+            @click="handleActionSelect('report', template.id)">
             <div class="flex items-center space-x-4">
               <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1035,8 +1070,12 @@ const handleGenerateDocuments = async () => {
         </div>
 
         <component :is="CustomDialogFooter" class="flex justify-between sm:justify-end sm:space-x-2">
-          <component :is="CustomButton" @click="handleGenerateDocuments" :disabled="!isFormValid || isGenerating">
+          <component v-if="selectedAction === 'documents'" :is="CustomButton" @click="handleGenerateDocuments" :disabled="!isFormValid || isGenerating">
             Сгенерировать комплект
+            <span v-if="isGenerating" class="ml-2">...</span>
+          </component>
+          <component v-else :is="CustomButton" @click="handleGenerateReport" :disabled="!isFormValid || isGenerating">
+            Сгенерировать документ
             <span v-if="isGenerating" class="ml-2">...</span>
           </component>
         </component>

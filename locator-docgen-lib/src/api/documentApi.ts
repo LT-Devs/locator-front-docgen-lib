@@ -33,10 +33,10 @@ export interface DocumentSetGenerationRequest {
 function documentApiFunction(options?: DocumentApiOptions) {
     const config = getConfig();
 
-    async function generateDocument(data: EnhancedDocumentData, templateName: string) {
+    async function generateDocument(data: EnhancedDocumentData, templateName: string, exportType: string = "docx") {
         try {
             const request: DocumentGenerationRequest = {
-                type: "docx",
+                type: exportType,
                 template_fields: JSON.stringify(data),
                 template_name: templateName
             };
@@ -48,7 +48,7 @@ function documentApiFunction(options?: DocumentApiOptions) {
             );
 
             // Создаем blob
-            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            const blob = new Blob([response.data], { type: 'application/octet-stream' });
 
             // Проверяем нужно ли скачивать файл автоматически
             const needDownload = options?.needDownload !== false; // По умолчанию true
@@ -59,10 +59,10 @@ function documentApiFunction(options?: DocumentApiOptions) {
                 const a = document.createElement('a');
                 a.href = url;
                 if (options?.filename == null) {
-                    a.download = `Document_${data.ref_id ?? 'new'}_${templateName}.docx`;
+                    a.download = `Document_${data.ref_id ?? 'new'}_${templateName}.${exportType}`;
                 }
                 else {
-                    a.download = `${options.filename}.docx`;
+                    a.download = `${options.filename}.${exportType}`;
                 }
                 document.body.appendChild(a);
                 a.click();

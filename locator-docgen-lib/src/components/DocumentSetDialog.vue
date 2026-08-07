@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import _ from "lodash";
 import axios from "axios";
 import { getConfig, useConfig } from "@/config";
 import { documentApi } from "@/api/documentApi";
@@ -130,9 +129,13 @@ const apiData = ref<Record<string, any>>({});
 const showLoadingOverlay = ref(false);
 const loadingText = ref('');
 
-// Вспомогательные функции (копируем из DocumentDialog)
+// Вспомогательная функция для получения значения по пути в объекте
 function getValueByPath(obj: any, path: string): any {
-  return _.get(obj, path);
+  if (!obj || !path) return undefined;
+  return path
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .reduce((acc, part) => (acc != null ? acc[part] : undefined), obj);
 }
 
 function checkCondition(condition: FieldCondition | undefined, document: DocumentData | null): boolean {
@@ -232,9 +235,10 @@ function getCookie(name: string): string | null {
   return null;
 }
 
+// Функция для обработки шаблонных переменных в строках
 function processTemplate(template: string, data: Record<string, any>): string {
   return template.replace(/\{\{\s*([^}]+)\s*\}\}/g, (match, path) => {
-    const value = _.get(data, path.trim());
+    const value = getValueByPath(data, path.trim());
     return value !== undefined ? String(value) : match;
   });
 }
