@@ -47,10 +47,11 @@ export interface ConditionGroup {
 export interface AdditionalField {
   id: string;
   name: string;
-  type: "string" | "number" | "date" | "boolean";
+  type: "string" | "number" | "date" | "boolean" | "multiselect";
   description: string;
   required: boolean;
-  defaultValue: string | number | boolean | null;
+  defaultValue: string | number | boolean | null | any[];
+  options?: { label: string; value: string | number }[];
   conditions?: (FieldCondition | ConditionGroup)[];
 }
 
@@ -519,7 +520,7 @@ const handleGenerateWithAdditionalFields = async () => {
           </component>
         </component>
 
-        <div class="py-4">
+        <div class="py-4 max-h-[60vh] overflow-y-auto px-2">
           <div v-if="Object.keys(apiData).length > 0" class="mb-4 p-3 bg-muted rounded-md">
             <p class="font-medium">Дополнительные данные загружены с сервера</p>
             <p class="text-sm text-muted-foreground">Данные будут использованы при генерации документа</p>
@@ -528,7 +529,7 @@ const handleGenerateWithAdditionalFields = async () => {
           <div class="space-y-4">
             <div v-for="field in filteredAdditionalFields" :key="field.id" class="space-y-2">
               <component :is="CustomLabel" :for="field.id" class="block">
-                {{ field.name }}
+                {{ processTemplate(field.name, { document: props.document }) }}
                 <span v-if="field.required" class="text-destructive">*</span>
               </component>
 
@@ -543,10 +544,56 @@ const handleGenerateWithAdditionalFields = async () => {
               <div v-else-if="field.type === 'boolean'" class="flex items-center space-x-2">
                 <component :is="CustomCheckbox" :id="field.id" v-model="additionalFieldValues[field.id]"
                   :required="field.required" />
-                <component :is="CustomLabel" :for="field.id">{{ field.description }}</component>
+                <component :is="CustomLabel" :for="field.id">{{ processTemplate(field.description, { document: props.document }) }}</component>
               </div>
 
-              <p class="text-sm text-muted-foreground">{{ field.description }}</p>
+              <div v-else-if="field.type === 'multiselect'" class="mt-4 border rounded-lg p-4 space-y-6 shadow-sm bg-background">
+                <!-- Доступные элементы -->
+                <div class="space-y-3">
+                  <p class="text-sm font-medium text-muted-foreground">Доступные объекты</p>
+                  <div class="max-h-[140px] overflow-y-auto pr-2">
+                    <TransitionGroup name="list" tag="div" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <template v-for="option in field.options" :key="'avail-' + option.value">
+                        <div v-if="!additionalFieldValues[field.id]?.includes(option.value)"
+                             @click="() => {
+                               const current = Array.isArray(additionalFieldValues[field.id]) ? additionalFieldValues[field.id] : [];
+                               additionalFieldValues[field.id] = [...current, option.value];
+                             }"
+                             class="p-2 border rounded-md cursor-pointer hover:bg-muted/80 hover:border-primary/50 transition-all duration-200 ease-in-out text-sm flex items-center justify-center text-center">
+                          {{ option.label }}
+                        </div>
+                      </template>
+                    </TransitionGroup>
+                  </div>
+                </div>
+
+                <hr class="border-border" />
+
+                <!-- Выбранные элементы (Копия направляется) -->
+                <div class="space-y-3">
+                  <p class="text-sm font-medium text-primary">Копия направляется:</p>
+                  <div class="min-h-[60px] max-h-[140px] overflow-y-auto pr-2">
+                    <div v-if="!(additionalFieldValues[field.id] && additionalFieldValues[field.id].length > 0)" class="text-xs text-muted-foreground italic py-2">
+                      Выберите объекты из списка выше
+                    </div>
+                    <TransitionGroup name="list" tag="div" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <template v-for="option in field.options" :key="'selected-' + option.value">
+                        <div v-if="additionalFieldValues[field.id]?.includes(option.value)"
+                             @click="() => {
+                               const current = Array.isArray(additionalFieldValues[field.id]) ? additionalFieldValues[field.id] : [];
+                               additionalFieldValues[field.id] = current.filter((v: any) => v !== option.value);
+                             }"
+                             class="p-2 border bg-primary/10 border-primary/20 rounded-md cursor-pointer hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all duration-200 ease-in-out relative group text-sm shadow-sm flex items-center justify-center text-center">
+                          {{ option.label }}
+                          <span class="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs">✕</span>
+                        </div>
+                      </template>
+                    </TransitionGroup>
+                  </div>
+                </div>
+              </div>
+
+              <p v-if="field.type !== 'boolean'" class="text-sm text-muted-foreground">{{ processTemplate(field.description, { document: props.document }) }}</p>
             </div>
           </div>
         </div>
@@ -570,3 +617,23 @@ const handleGenerateWithAdditionalFields = async () => {
 <style scoped>
 /* Удаляем старые стили, так как теперь используем компоненты Shadcn */
 </style>
+<style scoped>
+.list-move, /* apply transition to moving elements */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* ensure leaving items are taken out of layout flow so that moving
+   animations can be calculated correctly. */
+.list-leave-active {
+  position: absolute;
+}
+</style>
+

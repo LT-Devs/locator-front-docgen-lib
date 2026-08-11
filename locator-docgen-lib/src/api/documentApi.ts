@@ -58,7 +58,7 @@ function documentApiFunction(options?: DocumentApiOptions) {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                if (options?.filename == null) {
+                if (!options?.filename) {
                     a.download = `Document_${data.ref_id ?? 'new'}_${templateName}.${exportType}`;
                 }
                 else {
